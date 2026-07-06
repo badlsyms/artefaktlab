@@ -7,6 +7,7 @@ const app = express();
 const PORT = Number(process.env.PORT || 8080);
 const MODEL = process.env.NUCLEUS_MODEL || 'gemini-3.1-flash-lite';
 const FALLBACK_MODEL = process.env.NUCLEUS_FALLBACK_MODEL || 'gemini-2.5-flash-lite';
+const FACT_MODEL = process.env.NUCLEUS_FACT_MODEL || 'gemini-2.5-flash';
 const MODEL_CHAIN = [...new Set([MODEL, FALLBACK_MODEL].filter(Boolean))];
 const PROJECT = process.env.GOOGLE_CLOUD_PROJECT || process.env.GCLOUD_PROJECT || '';
 const LOCATION = process.env.GOOGLE_CLOUD_LOCATION || 'global';
@@ -14,6 +15,7 @@ const API_KEY = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || '';
 const ACCESS_PIN = process.env.NUCLEUS_ACCESS_PIN || '';
 const MAX_HISTORY = 24;
 const MAX_MESSAGE_CHARS = 12000;
+const MAX_FACT_CHARS = 18000;
 
 const SYSTEM_PROMPT = `Jsi Nucleus, personalizovaný AI asistent Toma Arno Cvancary Van der Honse z Prahy.
 
@@ -32,6 +34,35 @@ Pracovní styl:
 - Udržuj kontinuitu projektů, ale nikdy nevydávej odhad za uloženou paměť.
 
 Jsi „Nucleus“: centrální pracovní vrstva mezi nápadem a realizací. Tvým cílem není jen konverzace, ale zpřesnění záměru a posun k použitelnému výsledku.`;
+
+const FACT_CHECK_PROMPT = `Jsi modul Nucleusu s názvem LOVEC DEZINFORMACÍ.
+Tvým úkolem je provést skutečný fact-check nad aktuálními veřejnými webovými zdroji pomocí Google Search grounding.
+
+Pravidla:
+1. Nejprve rozlož vstup na jednotlivá ověřitelná tvrzení.
+2. U každého důležitého tvrzení hledej více nezávislých zdrojů, pokud jsou dostupné.
+3. Preferuj primární a autoritativní zdroje: oficiální instituce, zákony, registry, výzkumné práce, odborné organizace a původní dokumenty. Zpravodajství používej jako doplněk.
+4. Nehodnoť politický názor jako pravdu nebo lež. Ověřuj konkrétní faktická tvrzení.
+5. Jasně odděl: potvrzeno, nepravdivé, zavádějící, neověřitelné a chybí kontext.
+6. Když jsou kvalitní zdroje ve sporu, popiš spor a neskrývej nejistotu.
+7. Nevymýšlej citace ani zdroje. Použij pouze výsledky grounding nástroje.
+8. Odpověď napiš česky.
+
+Povinná struktura:
+VERDIKT: <POTVRZENO | NEPRAVDIVÉ | ZAVÁDĚJÍCÍ | SMÍŠENÉ | NELZE OVĚŘIT>
+JISTOTA: <0-100 %>
+
+ROZKLAD TVRZENÍ
+- ...
+
+OVĚŘENÍ
+- u každého tvrzení stručně: co zdroje potvrzují nebo vyvracejí
+
+CHYBĚJÍCÍ KONTEXT / MANIPULAČNÍ PRVKY
+- uveď cherry-picking, falešnou kauzalitu, neaktuální data, záměnu korelace za příčinu, emotivní framing apod. pouze pokud je skutečně vidíš
+
+ZÁVĚR
+- krátký a praktický závěr bez ideologického hodnocení.`;
 
 app.disable('x-powered-by');
 app.set('trust proxy', 1);
@@ -112,9 +143,31 @@ function publicError(error) {
   return { status: 503, code: 'AI_UNAVAILABLE', error: 'AI backend je momentálně nedostupný.' };
 }
 
-async function callVertex(contents, model) {
+function createVertexClient() {
   if (!PROJECT) throw new Error('GOOGLE_CLOUD_PROJECT is not configured');
-  const ai = new GoogleGenAI({ enterprise: true, project: PROJECT, location: LOCATION, apiVersion: 'v1' });
+  return new GoogleGenAI({ vertexai: true, project: PROJECT, location: LOCATION, apiVersion: 'v1' });
+}
+
+function extractGrounding(response) {
+  const metadata = response?.candidates?.[0]?.groundingMetadata || null;
+  const chunks = Array.isArray(metadata?.groundingChunks) ? metadata.groundingChunks : [];
+  const queries = Array.isArray(metadata?.webSearchQueries) ? metadata.webSearchQueries : [];
+  const seen = new Set();
+  const sources = [];
+
+  for (const chunk of chunks) {
+    const uri = String(chunk?.web?.uri || '').trim();
+    const title = String(chunk?.web?.title || '').trim();
+    if (!uri || seen.has(uri)) continue;
+    seen.add(uri);
+    sources.push({ title: title || uri, url: uri });
+  }
+
+  return { sources: sources.slice(0, 20), queries: queries.slice(0, 20) };
+}
+
+async function callVertex(contents, model) {
+  const ai = createVertexClient();
   const response = await ai.models.generateContent({
     model,
     contents,
@@ -127,7 +180,7 @@ async function callVertex(contents, model) {
   });
   const text = String(response.text || '').trim();
   if (!text) throw new Error('Google Cloud Gemini returned empty text');
-  return { text, provider: 'google-cloud-ai', model };
+  return { text, provider: 'vertex-ai', model };
 }
 
 async function callDeveloperApi(contents, model) {
@@ -148,17 +201,58 @@ async function callDeveloperApi(contents, model) {
   return { text, provider: 'gemini-api', model };
 }
 
+async function factCheckVertex(input) {
+  const ai = createVertexClient();
+  const response = await ai.models.generateContent({
+    model: FACT_MODEL,
+    contents: `${FACT_CHECK_PROMPT}\n\nVSTUP K OVĚŘENÍ:\n${input}`,
+    config: {
+      tools: [{ googleSearch: {} }],
+      temperature: 0.2,
+      topP: 0.8,
+      maxOutputTokens: 8192
+    }
+  });
+
+  const text = String(response.text || '').trim();
+  if (!text) throw new Error('Fact-check returned empty text');
+  const grounding = extractGrounding(response);
+  return { text, ...grounding, provider: 'vertex-ai-google-search', model: FACT_MODEL };
+}
+
+async function factCheckDeveloperApi(input) {
+  if (!API_KEY) throw new Error('GEMINI_API_KEY is not configured');
+  const ai = new GoogleGenAI({ apiKey: API_KEY });
+  const response = await ai.models.generateContent({
+    model: FACT_MODEL,
+    contents: `${FACT_CHECK_PROMPT}\n\nVSTUP K OVĚŘENÍ:\n${input}`,
+    config: {
+      tools: [{ googleSearch: {} }],
+      temperature: 0.2,
+      topP: 0.8,
+      maxOutputTokens: 8192
+    }
+  });
+
+  const text = String(response.text || '').trim();
+  if (!text) throw new Error('Fact-check returned empty text');
+  const grounding = extractGrounding(response);
+  return { text, ...grounding, provider: 'gemini-api-google-search', model: FACT_MODEL };
+}
+
 app.get('/health', (_req, res) => {
-  res.status(200).json({ ok: true, service: 'muj-nucleus', version: '2.0.0' });
+  res.status(200).json({ ok: true, service: 'muj-nucleus', version: '2.1.0' });
 });
 
 app.get('/api/status', (_req, res) => {
   res.json({
     ok: true,
     service: 'Můj Nucleus',
-    version: '2.0.0',
+    version: '2.1.0',
     model: MODEL,
     modelChain: MODEL_CHAIN,
+    factModel: FACT_MODEL,
+    factCheckAvailable: Boolean(PROJECT || API_KEY),
     cloudAiConfigured: Boolean(PROJECT),
     apiKeyFallbackConfigured: Boolean(API_KEY),
     pinProtected: Boolean(ACCESS_PIN)
@@ -181,8 +275,8 @@ app.post('/api/chat', rateLimit, pinGuard, async (req, res) => {
         const result = await callVertex(contents, model);
         return res.json({ ok: true, ...result });
       } catch (error) {
-        console.error(`Google Cloud AI failed for ${model}:`, error?.status || error?.code || '', error?.message || error);
-        attempts.push({ provider: 'google-cloud-ai', model, error });
+        console.error(`Vertex AI failed for ${model}:`, error?.status || error?.code || '', error?.message || error);
+        attempts.push({ provider: 'vertex-ai', model, error });
       }
     }
   }
@@ -202,6 +296,39 @@ app.post('/api/chat', rateLimit, pinGuard, async (req, res) => {
   const last = attempts.at(-1)?.error || new Error('No AI provider configured');
   const safe = publicError(last);
   return res.status(safe.status).json({ ...safe, model: MODEL });
+});
+
+app.post('/api/fact-check', rateLimit, pinGuard, async (req, res) => {
+  const input = String(req.body?.input || '').trim().slice(0, MAX_FACT_CHARS);
+  if (!input) {
+    return res.status(400).json({ error: 'Vlož tvrzení, text nebo veřejnou URL k ověření.', code: 'EMPTY_FACT_CHECK' });
+  }
+
+  const attempts = [];
+
+  if (PROJECT) {
+    try {
+      const result = await factCheckVertex(input);
+      return res.json({ ok: true, ...result });
+    } catch (error) {
+      console.error('Vertex fact-check failed:', error?.status || error?.code || '', error?.message || error);
+      attempts.push(error);
+    }
+  }
+
+  if (API_KEY) {
+    try {
+      const result = await factCheckDeveloperApi(input);
+      return res.json({ ok: true, ...result });
+    } catch (error) {
+      console.error('Gemini API fact-check failed:', error?.status || error?.code || '', error?.message || error);
+      attempts.push(error);
+    }
+  }
+
+  const last = attempts.at(-1) || new Error('No grounded AI provider configured');
+  const safe = publicError(last);
+  return res.status(safe.status).json({ ...safe, model: FACT_MODEL });
 });
 
 app.use(express.static('public', {
@@ -224,6 +351,6 @@ app.use((_req, res) => {
 });
 
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Můj Nucleus 2.0 listening on ${PORT}`);
-  console.log(`Model: ${MODEL}; Cloud AI: ${Boolean(PROJECT)}; API key fallback: ${Boolean(API_KEY)}; PIN: ${Boolean(ACCESS_PIN)}`);
+  console.log(`Můj Nucleus 2.1 listening on ${PORT}`);
+  console.log(`Chat model: ${MODEL}; Fact model: ${FACT_MODEL}; Vertex: ${Boolean(PROJECT)}; API key fallback: ${Boolean(API_KEY)}; PIN: ${Boolean(ACCESS_PIN)}`);
 });
