@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <meta name="theme-color" content="#0f172a" />
+  <meta name="theme-color" content="#050505" />
   <meta name="description" content="Prémiový personalizovaný AI asistent." />
   <link rel="manifest" href="/manifest.json" />
   <link rel="stylesheet" href="/styles.css" />
@@ -11,74 +11,106 @@
   <title>Můj Nucleus</title>
 </head>
 <body>
-  <main class="shell">
-    <header class="topbar">
-      <div>
-        <p class="eyebrow">NUCLEUS 2.1 · ONLINE</p>
-        <h1>Můj Nucleus</h1>
+  <main class="nucleus-app">
+    <header class="blackbar">
+      <div class="brand-block">
+        <div class="brand-mark">N</div>
+        <div>
+          <p class="eyebrow">MŮJ PERSONALIZOVANÝ AI ASISTENT</p>
+          <h1>Můj Nucleus</h1>
+        </div>
       </div>
       <div id="status" class="status">Připojuji…</div>
     </header>
 
-    <nav class="modules" aria-label="Moduly Nucleusu">
-      <button class="module-button active" type="button" data-view="chatView">◉ Nucleus AI</button>
-      <button class="module-button hunter" type="button" data-view="factView">⌕ Lovec dezinformací</button>
+    <section class="year-strip" aria-label="Průběh roku">
+      <div>
+        <strong id="yearLabel">2026</strong>
+        <span id="yearPercent">0 % roku</span>
+      </div>
+      <div id="yearDots" class="year-dots"></div>
+    </section>
+
+    <nav class="module-tabs" aria-label="Moduly Nucleusu">
+      <button class="tab active" type="button" data-view="calendarView">Kalendář</button>
+      <button class="tab" type="button" data-view="chatView">Nucleus AI</button>
+      <button class="tab danger" type="button" data-view="factView">Lovec dezinformací</button>
+      <button class="tab" type="button" data-view="memoryView">Boost paměti</button>
+      <button class="tab" type="button" data-view="botView">Lov botů</button>
+      <button class="tab" type="button" data-view="planView">24h plán</button>
+      <button class="tab" type="button" data-view="notesView">Poznámky</button>
+      <button class="tab" type="button" data-view="exportView">Export</button>
     </nav>
 
-    <section id="chatView" class="view active">
-      <section id="chat" class="chat" aria-live="polite">
-        <article class="message assistant">
-          <div class="avatar">N</div>
-          <div class="bubble">Jsem Nucleus. Nápad dovnitř, použitelný výsledek ven. Co dnes posuneme?</div>
-        </article>
-      </section>
+    <section id="calendarView" class="view active">
+      <div class="calendar-head">
+        <button id="prevMonth" class="square" type="button">‹</button>
+        <div>
+          <p class="eyebrow">KALENDÁŘ / JMENINY / PLÁN</p>
+          <h2 id="monthTitle">Měsíc</h2>
+        </div>
+        <button id="nextMonth" class="square" type="button">›</button>
+        <button id="todayButton" type="button">Dnes</button>
+      </div>
+      <div class="weekdays"><span>Po</span><span>Út</span><span>St</span><span>Čt</span><span>Pá</span><span>So</span><span>Ne</span></div>
+      <div id="calendarGrid" class="calendar-grid"></div>
+      <aside class="day-panel">
+        <h3 id="selectedDateTitle">Vybraný den</h3>
+        <p id="selectedDateMeta">Klikni na den v kalendáři.</p>
+        <label>Denní poznámka<textarea id="dayNote" rows="4" placeholder="Co je pro tento den důležité?"></textarea></label>
+        <button id="saveDayNote" type="button">Uložit den</button>
+      </aside>
+    </section>
 
-      <form id="composer" class="composer">
-        <textarea id="message" rows="1" maxlength="12000" placeholder="Napiš Nucleusu…" required></textarea>
-        <button id="send" type="submit">Odeslat</button>
-      </form>
+    <section id="chatView" class="view" hidden>
+      <section id="chat" class="chat" aria-live="polite">
+        <article class="message assistant"><div class="avatar">N</div><div class="bubble">Jsem Nucleus. Nápad dovnitř, použitelný výsledek ven.</div></article>
+      </section>
+      <form id="composer" class="composer"><textarea id="message" rows="1" maxlength="12000" placeholder="Napiš Nucleusu…" required></textarea><button id="send" type="submit">Odeslat</button></form>
     </section>
 
     <section id="factView" class="view fact-view" hidden>
-      <header class="module-head">
-        <div class="module-icon">⌕</div>
-        <div>
-          <p class="eyebrow">ONLINE FACT-CHECK</p>
-          <h2>Lovec dezinformací</h2>
-          <p>Vlož tvrzení, text příspěvku nebo veřejnou URL. Lovec rozloží tvrzení a ověří je proti aktuálním webovým zdrojům.</p>
-        </div>
-      </header>
-
-      <form id="factForm" class="fact-form">
-        <textarea id="factInput" rows="8" maxlength="18000" placeholder="Např.: Vlož sem text článku, tvrzení nebo https://…" required></textarea>
-        <div class="fact-actions">
-          <button id="factRun" type="submit">Spustit lov</button>
-          <button id="factClear" class="secondary" type="button">Vyčistit</button>
-        </div>
-      </form>
-
+      <header class="module-head"><div class="module-icon">⌕</div><div><p class="eyebrow">ONLINE FACT-CHECK</p><h2>Lovec dezinformací</h2><p>Vlož tvrzení, text příspěvku nebo veřejnou URL. Lovec ověří fakta přes aktuální webové zdroje.</p></div></header>
+      <form id="factForm" class="fact-form"><textarea id="factInput" rows="8" maxlength="18000" placeholder="Vlož tvrzení, text článku nebo URL…" required></textarea><div class="fact-actions"><button id="factRun" type="submit">Spustit lov</button><button id="factClear" class="secondary" type="button">Vyčistit</button></div></form>
       <section id="factState" class="fact-state">Připraven. Vlož obsah k ověření.</section>
-
-      <article id="factResultCard" class="fact-result" hidden>
-        <h3>Výsledek ověření</h3>
-        <pre id="factResult"></pre>
-        <div id="factQueriesWrap" class="fact-meta" hidden>
-          <h4>Použité vyhledávací dotazy</h4>
-          <div id="factQueries" class="query-list"></div>
-        </div>
-        <div id="factSourcesWrap" class="fact-meta" hidden>
-          <h4>Webové zdroje</h4>
-          <ol id="factSources" class="source-list"></ol>
-        </div>
-      </article>
+      <article id="factResultCard" class="fact-result" hidden><h3>Výsledek ověření</h3><pre id="factResult"></pre><div id="factQueriesWrap" class="fact-meta" hidden><h4>Použité vyhledávací dotazy</h4><div id="factQueries" class="query-list"></div></div><div id="factSourcesWrap" class="fact-meta" hidden><h4>Webové zdroje</h4><ol id="factSources" class="source-list"></ol></div></article>
     </section>
 
-    <details class="settings">
-      <summary>Nastavení</summary>
-      <label>PIN Nucleusu <input id="pin" type="password" autocomplete="off" /></label>
-      <button id="clear" type="button">Vymazat místní AI historii</button>
-      <pre id="diagnostics"></pre>
-    </details>
+    <section id="memoryView" class="view module-card" hidden>
+      <p class="eyebrow">KONTEXTOVÁ PAMĚŤ</p><h2>Boost paměti</h2>
+      <p>Sem ulož stabilní pravidla a kontext, který má Nucleus přikládat k dalším dotazům v této PWA.</p>
+      <textarea id="memoryBoost" rows="10" placeholder="Např. styl odpovědí, projekty, pravidla, co nezapomenout…"></textarea>
+      <div class="button-row"><button id="saveMemory" type="button">Uložit boost</button><button id="injectMemory" class="secondary" type="button">Vložit do AI dotazu</button></div>
+      <p id="memoryState" class="mini-state">Lokální paměť je uložená jen v tomto zařízení.</p>
+    </section>
+
+    <section id="botView" class="view module-card" hidden>
+      <p class="eyebrow">BEZPEČNÁ ANALÝZA</p><h2>Lov botů</h2>
+      <p>Bez aktivního skenování sítí. Analyzuje text, komentáře nebo logy a hledá známky botího/spamového chování.</p>
+      <textarea id="botInput" rows="8" placeholder="Vlož komentáře, zprávy, logy nebo podezřelé vzorce chování…"></textarea>
+      <button id="runBotHunt" type="button">Analyzovat vzorce</button>
+      <pre id="botResult" class="result-box">Připraven.</pre>
+    </section>
+
+    <section id="planView" class="view module-card" hidden>
+      <p class="eyebrow">DENNÍ REŽIM</p><h2>24h plán</h2>
+      <div id="hourPlan" class="hour-plan"></div>
+      <button id="savePlan" type="button">Uložit 24h plán</button>
+    </section>
+
+    <section id="notesView" class="view module-card" hidden>
+      <p class="eyebrow">RYCHLÉ ZÁPISKY</p><h2>Poznámky</h2>
+      <textarea id="globalNotes" rows="12" placeholder="Volné poznámky Nucleusu…"></textarea>
+      <button id="saveNotes" type="button">Uložit poznámky</button>
+    </section>
+
+    <section id="exportView" class="view module-card" hidden>
+      <p class="eyebrow">EXPORT / TISK</p><h2>Export</h2>
+      <p>Exportuje aktuální měsíc, denní poznámku, 24h plán, globální poznámky a memory boost do tisknutelného HTML.</p>
+      <div class="button-row"><button id="printExport" type="button">Tisk / PDF</button><button id="downloadExport" class="secondary" type="button">Stáhnout HTML</button></div>
+    </section>
+
+    <details class="settings"><summary>Nastavení</summary><label>PIN Nucleusu <input id="pin" type="password" autocomplete="off" /></label><button id="clear" type="button">Vymazat místní AI historii</button><pre id="diagnostics"></pre></details>
   </main>
   <script type="module" src="/app.js"></script>
 </body>
