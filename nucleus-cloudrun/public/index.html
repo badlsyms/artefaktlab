@@ -13,28 +13,69 @@
   <main class="shell">
     <header class="topbar">
       <div>
-        <p class="eyebrow">NUCLEUS 2.0</p>
+        <p class="eyebrow">NUCLEUS 2.1 · ONLINE</p>
         <h1>Můj Nucleus</h1>
       </div>
       <div id="status" class="status">Připojuji…</div>
     </header>
 
-    <section id="chat" class="chat" aria-live="polite">
-      <article class="message assistant">
-        <div class="avatar">N</div>
-        <div class="bubble">Jsem Nucleus. Nápad dovnitř, použitelný výsledek ven. Co dnes posuneme?</div>
-      </article>
+    <nav class="modules" aria-label="Moduly Nucleusu">
+      <button class="module-button active" type="button" data-view="chatView">◉ Nucleus AI</button>
+      <button class="module-button hunter" type="button" data-view="factView">⌕ Lovec dezinformací</button>
+    </nav>
+
+    <section id="chatView" class="view active">
+      <section id="chat" class="chat" aria-live="polite">
+        <article class="message assistant">
+          <div class="avatar">N</div>
+          <div class="bubble">Jsem Nucleus. Nápad dovnitř, použitelný výsledek ven. Co dnes posuneme?</div>
+        </article>
+      </section>
+
+      <form id="composer" class="composer">
+        <textarea id="message" rows="1" maxlength="12000" placeholder="Napiš Nucleusu…" required></textarea>
+        <button id="send" type="submit">Odeslat</button>
+      </form>
     </section>
 
-    <form id="composer" class="composer">
-      <textarea id="message" rows="1" maxlength="12000" placeholder="Napiš Nucleusu…" required></textarea>
-      <button id="send" type="submit">Odeslat</button>
-    </form>
+    <section id="factView" class="view fact-view" hidden>
+      <header class="module-head">
+        <div class="module-icon">⌕</div>
+        <div>
+          <p class="eyebrow">ONLINE FACT-CHECK</p>
+          <h2>Lovec dezinformací</h2>
+          <p>Vlož tvrzení, text příspěvku nebo veřejnou URL. Lovec rozloží tvrzení a ověří je proti aktuálním webovým zdrojům.</p>
+        </div>
+      </header>
+
+      <form id="factForm" class="fact-form">
+        <textarea id="factInput" rows="8" maxlength="18000" placeholder="Např.: Vlož sem text článku, tvrzení nebo https://…" required></textarea>
+        <div class="fact-actions">
+          <button id="factRun" type="submit">Spustit lov</button>
+          <button id="factClear" class="secondary" type="button">Vyčistit</button>
+        </div>
+      </form>
+
+      <section id="factState" class="fact-state">Připraven. Vlož obsah k ověření.</section>
+
+      <article id="factResultCard" class="fact-result" hidden>
+        <h3>Výsledek ověření</h3>
+        <pre id="factResult"></pre>
+        <div id="factQueriesWrap" class="fact-meta" hidden>
+          <h4>Použité vyhledávací dotazy</h4>
+          <div id="factQueries" class="query-list"></div>
+        </div>
+        <div id="factSourcesWrap" class="fact-meta" hidden>
+          <h4>Webové zdroje</h4>
+          <ol id="factSources" class="source-list"></ol>
+        </div>
+      </article>
+    </section>
 
     <details class="settings">
       <summary>Nastavení</summary>
       <label>PIN Nucleusu <input id="pin" type="password" autocomplete="off" /></label>
-      <button id="clear" type="button">Vymazat místní historii</button>
+      <button id="clear" type="button">Vymazat místní AI historii</button>
       <pre id="diagnostics"></pre>
     </details>
   </main>
