@@ -114,7 +114,7 @@ function publicError(error) {
 
 async function callVertex(contents, model) {
   if (!PROJECT) throw new Error('GOOGLE_CLOUD_PROJECT is not configured');
-  const ai = new GoogleGenAI({ vertexai: true, project: PROJECT, location: LOCATION });
+  const ai = new GoogleGenAI({ enterprise: true, project: PROJECT, location: LOCATION, apiVersion: 'v1' });
   const response = await ai.models.generateContent({
     model,
     contents,
@@ -126,8 +126,8 @@ async function callVertex(contents, model) {
     }
   });
   const text = String(response.text || '').trim();
-  if (!text) throw new Error('Vertex AI returned empty text');
-  return { text, provider: 'vertex-ai', model };
+  if (!text) throw new Error('Google Cloud Gemini returned empty text');
+  return { text, provider: 'google-cloud-ai', model };
 }
 
 async function callDeveloperApi(contents, model) {
@@ -159,7 +159,7 @@ app.get('/api/status', (_req, res) => {
     version: '2.0.0',
     model: MODEL,
     modelChain: MODEL_CHAIN,
-    vertexConfigured: Boolean(PROJECT),
+    cloudAiConfigured: Boolean(PROJECT),
     apiKeyFallbackConfigured: Boolean(API_KEY),
     pinProtected: Boolean(ACCESS_PIN)
   });
@@ -181,8 +181,8 @@ app.post('/api/chat', rateLimit, pinGuard, async (req, res) => {
         const result = await callVertex(contents, model);
         return res.json({ ok: true, ...result });
       } catch (error) {
-        console.error(`Vertex AI failed for ${model}:`, error?.status || error?.code || '', error?.message || error);
-        attempts.push({ provider: 'vertex-ai', model, error });
+        console.error(`Google Cloud AI failed for ${model}:`, error?.status || error?.code || '', error?.message || error);
+        attempts.push({ provider: 'google-cloud-ai', model, error });
       }
     }
   }
@@ -225,5 +225,5 @@ app.use((_req, res) => {
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Můj Nucleus 2.0 listening on ${PORT}`);
-  console.log(`Model: ${MODEL}; Vertex: ${Boolean(PROJECT)}; API key fallback: ${Boolean(API_KEY)}; PIN: ${Boolean(ACCESS_PIN)}`);
+  console.log(`Model: ${MODEL}; Cloud AI: ${Boolean(PROJECT)}; API key fallback: ${Boolean(API_KEY)}; PIN: ${Boolean(ACCESS_PIN)}`);
 });
