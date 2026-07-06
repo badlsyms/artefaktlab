@@ -46,7 +46,7 @@ gcloud run deploy "$SERVICE" \
   --project "$PROJECT_ID" \
   --service-account "$SERVICE_ACCOUNT" \
   --allow-unauthenticated \
-  --update-env-vars="NUCLEUS_MODEL=${MODEL},NUCLEUS_FALLBACK_MODEL=${FALLBACK_MODEL},GOOGLE_CLOUD_LOCATION=global" \
+  --update-env-vars="GOOGLE_CLOUD_PROJECT=${PROJECT_ID},GOOGLE_CLOUD_LOCATION=global,NUCLEUS_MODEL=${MODEL},NUCLEUS_FALLBACK_MODEL=${FALLBACK_MODEL}" \
   --quiet
 
 URL="$(gcloud run services describe "$SERVICE" --region "$REGION" --project "$PROJECT_ID" --format='value(status.url)')"
