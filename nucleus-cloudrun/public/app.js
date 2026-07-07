@@ -42,9 +42,6 @@ const memoryBoost = $('#memoryBoost');
 const saveMemory = $('#saveMemory');
 const injectMemory = $('#injectMemory');
 const memoryState = $('#memoryState');
-const botInput = $('#botInput');
-const runBotHunt = $('#runBotHunt');
-const botResult = $('#botResult');
 const hourPlan = $('#hourPlan');
 const savePlan = $('#savePlan');
 const globalNotes = $('#globalNotes');
@@ -87,12 +84,47 @@ function easterDate(year){const a=year%19,b=Math.floor(year/100),c=year%100,d=Ma
 function holidayFor(date){const fixed=FIXED_HOLIDAYS[md(date)];const easter=easterDate(date.getFullYear());const goodFriday=new Date(easter);goodFriday.setDate(easter.getDate()-2);const monday=new Date(easter);monday.setDate(easter.getDate()+1);if(toKey(date)===toKey(goodFriday))return 'Velký pátek';if(toKey(date)===toKey(monday))return 'Velikonoční pondělí';return fixed||''}
 function namedayFor(date){return NAMEDAYS[md(date)]||''}
 
-function switchView(id){for(const v of views){const active=v.id===id;v.hidden=!active;v.classList.toggle('active',active)}for(const t of tabs)t.classList.toggle('active',t.dataset.view===id);if(id==='chatView')input.focus();if(id==='factView')factInput.focus()}
+function switchView(id){
+  for(const v of views){const active=v.id===id;v.hidden=!active;v.classList.toggle('active',active)}
+  for(const t of tabs)t.classList.toggle('active',t.dataset.view===id);
+  if(id==='chatView')input.focus();
+  if(id==='factView')factInput.focus();
+  document.dispatchEvent(new CustomEvent('nucleus:viewchange',{detail:{id}}));
+}
 for(const t of tabs)t.addEventListener('click',()=>switchView(t.dataset.view));
 
 function renderYearProgress(){const now=new Date();const start=new Date(now.getFullYear(),0,1);const end=new Date(now.getFullYear()+1,0,1);const ratio=Math.max(0,Math.min(1,(now-start)/(end-start)));yearLabel.textContent=String(now.getFullYear());yearPercent.textContent=`${Math.round(ratio*100)} % roku`;yearDots.replaceChildren();for(let i=0;i<52;i++){const dot=document.createElement('span');dot.className=i/52<=ratio?'done':'';yearDots.append(dot)}}
 
-function renderCalendar(){const year=viewDate.getFullYear();const month=viewDate.getMonth();monthTitle.textContent=`${CZ_MONTHS[month]} ${year}`;calendarGrid.replaceChildren();const first=new Date(year,month,1);const startOffset=(first.getDay()+6)%7;const gridStart=new Date(year,month,1-startOffset);const todayKey=toKey(new Date());for(let i=0;i<42;i++){const d=new Date(gridStart);d.setDate(gridStart.getDate()+i);const key=toKey(d);const card=document.createElement('button');card.type='button';card.className='day-tile';if(d.getMonth()!==month)card.classList.add('outside');if(d.getDay()===0||d.getDay()===6)card.classList.add('weekend');if(key===todayKey)card.classList.add('today');if(key===selectedDate)card.classList.add('selected');if(holidayFor(d))card.classList.add('holiday');const nday=namedayFor(d);const holiday=holidayFor(d);const note=dayNotes[key];card.innerHTML=`<strong>${d.getDate()}</strong><span>${CZ_DAYS[d.getDay()]}</span><small>${holiday||nday||' '}</small>${note?'<em>●</em>':''}`;card.addEventListener('click',()=>{selectedDate=key;renderCalendar();renderSelectedDay()});calendarGrid.append(card)}renderSelectedDay()}
+function renderCalendar(){
+  const year=viewDate.getFullYear();
+  const month=viewDate.getMonth();
+  monthTitle.textContent=`${CZ_MONTHS[month]} ${year}`;
+  calendarGrid.replaceChildren();
+  const first=new Date(year,month,1);
+  const startOffset=(first.getDay()+6)%7;
+  const gridStart=new Date(year,month,1-startOffset);
+  const todayKey=toKey(new Date());
+  for(let i=0;i<42;i++){
+    const d=new Date(gridStart);d.setDate(gridStart.getDate()+i);
+    const key=toKey(d);
+    const card=document.createElement('button');card.type='button';card.className='day-tile';
+    if(d.getMonth()!==month)card.classList.add('outside');
+    if(d.getDay()===0||d.getDay()===6)card.classList.add('weekend');
+    if(key===todayKey)card.classList.add('today');
+    if(key===selectedDate)card.classList.add('selected');
+    const holiday=holidayFor(d);
+    if(holiday)card.classList.add('holiday');
+    const nday=namedayFor(d);
+    const number=document.createElement('strong');number.textContent=String(d.getDate());
+    const dayName=document.createElement('span');dayName.textContent=CZ_DAYS[d.getDay()];
+    const meta=document.createElement('small');meta.textContent=holiday||nday||' ';
+    card.append(number,dayName,meta);
+    if(dayNotes[key]){const noteDot=document.createElement('em');noteDot.textContent='●';card.append(noteDot)}
+    card.addEventListener('click',()=>{selectedDate=key;renderCalendar();renderSelectedDay()});
+    calendarGrid.append(card);
+  }
+  renderSelectedDay();
+}
 function renderSelectedDay(){const d=fromKey(selectedDate);const h=holidayFor(d);const n=namedayFor(d);selectedDateTitle.textContent=`${d.getDate()}. ${CZ_MONTHS[d.getMonth()]} ${d.getFullYear()}`;selectedDateMeta.textContent=[CZ_DAYS[d.getDay()],h?`svátek: ${h}`:'',n?`jmeniny: ${n}`:''].filter(Boolean).join(' · ');dayNote.value=dayNotes[selectedDate]||''}
 prevMonth.addEventListener('click',()=>{viewDate.setMonth(viewDate.getMonth()-1);renderCalendar()});
 nextMonth.addEventListener('click',()=>{viewDate.setMonth(viewDate.getMonth()+1);renderCalendar()});
@@ -109,7 +141,8 @@ input.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventD
 clear.addEventListener('click',()=>{history=[];localStorage.removeItem(STORE);location.reload()});
 pin.addEventListener('change',()=>localStorage.setItem(PIN_STORE,pin.value));
 
-function renderFactSources(sources){factSources.replaceChildren();if(!Array.isArray(sources)||!sources.length){factSourcesWrap.hidden=true;return}for(const s of sources){const li=document.createElement('li');const a=document.createElement('a');a.href=s.url;a.target='_blank';a.rel='noopener noreferrer';a.textContent=s.title||s.url;li.append(a);factSources.append(li)}factSourcesWrap.hidden=false}
+function safeHttpUrl(value){try{const url=new URL(String(value||''),location.origin);return ['http:','https:'].includes(url.protocol)?url.href:''}catch{return ''}}
+function renderFactSources(sources){factSources.replaceChildren();if(!Array.isArray(sources)||!sources.length){factSourcesWrap.hidden=true;return}for(const s of sources){const href=safeHttpUrl(s.url);if(!href)continue;const li=document.createElement('li');const a=document.createElement('a');a.href=href;a.target='_blank';a.rel='noopener noreferrer';a.textContent=s.title||s.url;li.append(a);factSources.append(li)}factSourcesWrap.hidden=factSources.childElementCount===0}
 function renderFactQueries(queries){factQueries.replaceChildren();if(!Array.isArray(queries)||!queries.length){factQueriesWrap.hidden=true;return}for(const q of queries){const chip=document.createElement('span');chip.className='query-chip';chip.textContent=q;factQueries.append(chip)}factQueriesWrap.hidden=false}
 async function runFactCheck(text){factRun.disabled=true;factResultCard.hidden=true;factResult.textContent='';renderFactSources([]);renderFactQueries([]);factState.textContent='Lovec hledá zdroje a ověřuje tvrzení…';factState.className='fact-state working';setStatus('Lovec dezinformací pracuje…');try{const r=await fetch('/api/fact-check',{method:'POST',headers:{'content-type':'application/json',...(pin.value?{'x-nucleus-pin':pin.value}:{})},body:JSON.stringify({input:text})});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||`HTTP ${r.status}`);factResult.textContent=d.text;renderFactQueries(d.queries);renderFactSources(d.sources);factResultCard.hidden=false;const count=Array.isArray(d.sources)?d.sources.length:0;factState.textContent=`Hotovo · ${count} webových zdrojů · ${d.model}`;factState.className='fact-state ok';setStatus(`Online · Lovec · ${d.model}`,'ok')}catch(e){factState.textContent=`Chyba Lovce: ${e.message}`;factState.className='fact-state error';setStatus('Chyba Lovce','error')}finally{factRun.disabled=false;factInput.focus()}}
 factForm.addEventListener('submit',async e=>{e.preventDefault();const text=factInput.value.trim();if(!text)return;localStorage.setItem(FACT_DRAFT_STORE,text);await runFactCheck(text)});
@@ -119,16 +152,21 @@ factClear.addEventListener('click',()=>{factInput.value='';localStorage.removeIt
 saveMemory.addEventListener('click',()=>{localStorage.setItem(MEMORY_STORE,memoryBoost.value);memoryState.textContent='Boost paměti uložen.'});
 injectMemory.addEventListener('click',()=>{switchView('chatView');input.value=`Použij můj Boost paměti a pomoz mi s tímto:\n\n`;input.focus()});
 
-function analyzeBots(text){const lines=text.split(/\n+/).map(x=>x.trim()).filter(Boolean);const words=text.toLowerCase().match(/[a-zá-ž0-9]{3,}/gi)||[];const urls=(text.match(/https?:\/\/\S+/g)||[]).length;const repeated=new Map();for(const l of lines)repeated.set(l,(repeated.get(l)||0)+1);const dup=[...repeated.values()].filter(v=>v>1).reduce((a,b)=>a+b,0);const urlRatio=lines.length?urls/lines.length:0;const wordSet=new Set(words);const diversity=words.length?wordSet.size/words.length:1;let score=0;if(dup>1)score+=25;if(urlRatio>.3)score+=20;if(diversity<.35)score+=20;if(/crypto|airdrop|bonus|klikni|výdělek|prize|giveaway|telegram|whatsapp/i.test(text))score+=15;if(lines.length>8&&dup/lines.length>.25)score+=20;score=Math.min(100,score);const verdict=score>70?'Vysoké podezření na bot/spam vzorec':score>40?'Střední podezření':'Nízké až mírné podezření';return `${verdict}\nSkóre: ${score}/100\nŘádků: ${lines.length}\nURL: ${urls}\nOpakované řádky: ${dup}\nSlovní rozmanitost: ${Math.round(diversity*100)} %\n\nPoznámka: Bezpečná analýza textu/logů. Neprovádí skenování, útoky ani obcházení systémů.`}
-runBotHunt.addEventListener('click',()=>{botResult.textContent=analyzeBots(botInput.value||'')});
-
-function renderPlan(){hourPlan.replaceChildren();for(let h=0;h<24;h++){const row=document.createElement('label');row.className='hour-row';row.innerHTML=`<span>${pad(h)}:00</span><input value="${(plan[h]||'').replaceAll('"','&quot;')}" placeholder="plán / blok / úkol">`;hourPlan.append(row)}}
+function renderPlan(){
+  hourPlan.replaceChildren();
+  for(let h=0;h<24;h++){
+    const row=document.createElement('label');row.className='hour-row';
+    const label=document.createElement('span');label.textContent=`${pad(h)}:00`;
+    const field=document.createElement('input');field.value=String(plan[h]||'');field.placeholder='plán / blok / úkol';
+    row.append(label,field);hourPlan.append(row);
+  }
+}
 savePlan.addEventListener('click',()=>{const rows=$$('#hourPlan input');plan={};rows.forEach((el,i)=>plan[i]=el.value.trim());saveJson(PLAN_STORE,plan)});
 saveNotes.addEventListener('click',()=>localStorage.setItem(NOTES_STORE,globalNotes.value));
 
-function exportHtml(){const d=fromKey(selectedDate);const day=dayNotes[selectedDate]||'';return `<!doctype html><meta charset="utf-8"><title>Nucleus export</title><style>body{font-family:Arial,sans-serif;line-height:1.5;padding:24px}h1,h2{margin-bottom:6px}pre{white-space:pre-wrap;background:#eee;padding:12px}</style><h1>Můj Nucleus export</h1><h2>${d.getDate()}. ${CZ_MONTHS[d.getMonth()]} ${d.getFullYear()}</h2><p>${selectedDateMeta.textContent}</p><h2>Denní poznámka</h2><pre>${escapeHtml(day)}</pre><h2>24h plán</h2><pre>${escapeHtml(Object.entries(plan).map(([h,v])=>`${pad(h)}:00 ${v||''}`).join('\n'))}</pre><h2>Globální poznámky</h2><pre>${escapeHtml(globalNotes.value)}</pre><h2>Boost paměti</h2><pre>${escapeHtml(memoryBoost.value)}</pre>`}
+function exportHtml(){const d=fromKey(selectedDate);const day=dayNotes[selectedDate]||'';return `<!doctype html><meta charset="utf-8"><title>Nucleus export</title><style>body{font-family:Arial,sans-serif;line-height:1.5;padding:24px}h1,h2{margin-bottom:6px}pre{white-space:pre-wrap;background:#eee;padding:12px}</style><h1>Můj Nucleus export</h1><h2>${d.getDate()}. ${CZ_MONTHS[d.getMonth()]} ${d.getFullYear()}</h2><p>${escapeHtml(selectedDateMeta.textContent)}</p><h2>Denní poznámka</h2><pre>${escapeHtml(day)}</pre><h2>24h plán</h2><pre>${escapeHtml(Object.entries(plan).map(([h,v])=>`${pad(h)}:00 ${v||''}`).join('\n'))}</pre><h2>Globální poznámky</h2><pre>${escapeHtml(globalNotes.value)}</pre><h2>Boost paměti</h2><pre>${escapeHtml(memoryBoost.value)}</pre>`}
 function escapeHtml(s){return String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}
-printExport.addEventListener('click',()=>{const w=window.open('','_blank');w.document.write(exportHtml());w.document.close();w.print()});
+printExport.addEventListener('click',()=>{const w=window.open('','_blank','noopener,noreferrer');if(!w)return;w.document.write(exportHtml());w.document.close();w.print()});
 downloadExport.addEventListener('click',()=>{const blob=new Blob([exportHtml()],{type:'text/html;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`nucleus-export-${selectedDate}.html`;a.click();URL.revokeObjectURL(a.href)});
 
 if('serviceWorker'in navigator)navigator.serviceWorker.register('/sw.js').catch(console.error);
