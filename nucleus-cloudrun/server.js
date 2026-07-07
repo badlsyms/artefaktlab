@@ -2,9 +2,20 @@ import express from 'express';
 import helmet from 'helmet';
 import { GoogleGenAI } from '@google/genai';
 import { fileURLToPath } from 'node:url';
+import {
+  analyzeHound,
+  cloudDataConfigured,
+  cloudSmokeTest,
+  getNewsFeed,
+  listHoundFindings,
+  listVaultRecords,
+  saveFactRecord,
+  saveHoundFinding
+} from './vault-service.js';
 
 const app = express();
 const PORT = Number(process.env.PORT || 8080);
+const VERSION = '2.2.0';
 const MODEL = process.env.NUCLEUS_MODEL || 'gemini-3.1-flash-lite';
 const FALLBACK_MODEL = process.env.NUCLEUS_FALLBACK_MODEL || 'gemini-2.5-flash-lite';
 const FACT_MODEL = process.env.NUCLEUS_FACT_MODEL || 'gemini-2.5-flash';
@@ -14,8 +25,9 @@ const LOCATION = process.env.GOOGLE_CLOUD_LOCATION || 'global';
 const API_KEY = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || '';
 const ACCESS_PIN = process.env.NUCLEUS_ACCESS_PIN || '';
 const MAX_HISTORY = 24;
-const MAX_MESSAGE_CHARS = 12000;
-const MAX_FACT_CHARS = 18000;
+const MAX_MESSAGE_CHARS = 12_000;
+const MAX_FACT_CHARS = 18_000;
+const MAX_HOUND_CHARS = 50_000;
 
 const SYSTEM_PROMPT = `Jsi Nucleus, personalizovaný AI asistent Toma Arno Cvancary Van der Honse z Prahy.
 
@@ -143,6 +155,17 @@ function publicError(error) {
   return { status: 503, code: 'AI_UNAVAILABLE', error: 'AI backend je momentálně nedostupný.' };
 }
 
+function cloudPublicError(error) {
+  console.error('Cloud data operation failed:', error?.code || '', error?.message || error);
+  if (error?.code === 'CLOUD_DATA_NOT_CONFIGURED') {
+    return { status: 503, code: 'CLOUD_DATA_NOT_CONFIGURED', error: 'Cloudový trezor Nucleusu není nakonfigurován.' };
+  }
+  if (Number(error?.code) === 7 || /permission|denied|forbidden/i.test(String(error?.message || ''))) {
+    return { status: 503, code: 'CLOUD_DATA_PERMISSION', error: 'Cloud Run service identity nemá oprávnění k zápisu do Firestore.' };
+  }
+  return { status: 503, code: 'CLOUD_DATA_UNAVAILABLE', error: 'Cloudová data Nucleusu jsou momentálně nedostupná.' };
+}
+
 function createVertexClient() {
   if (!PROJECT) throw new Error('GOOGLE_CLOUD_PROJECT is not configured');
   return new GoogleGenAI({ vertexai: true, project: PROJECT, location: LOCATION, apiVersion: 'v1' });
@@ -213,7 +236,6 @@ async function factCheckVertex(input) {
       maxOutputTokens: 8192
     }
   });
-
   const text = String(response.text || '').trim();
   if (!text) throw new Error('Fact-check returned empty text');
   const grounding = extractGrounding(response);
@@ -233,26 +255,49 @@ async function factCheckDeveloperApi(input) {
       maxOutputTokens: 8192
     }
   });
-
   const text = String(response.text || '').trim();
   if (!text) throw new Error('Fact-check returned empty text');
   const grounding = extractGrounding(response);
   return { text, ...grounding, provider: 'gemini-api-google-search', model: FACT_MODEL };
 }
 
+async function performFactCheck(input) {
+  const attempts = [];
+  if (PROJECT) {
+    try {
+      return await factCheckVertex(input);
+    } catch (error) {
+      console.error('Vertex fact-check failed:', error?.status || error?.code || '', error?.message || error);
+      attempts.push(error);
+    }
+  }
+  if (API_KEY) {
+    try {
+      return await factCheckDeveloperApi(input);
+    } catch (error) {
+      console.error('Gemini API fact-check failed:', error?.status || error?.code || '', error?.message || error);
+      attempts.push(error);
+    }
+  }
+  throw attempts.at(-1) || new Error('No grounded AI provider configured');
+}
+
 app.get('/health', (_req, res) => {
-  res.status(200).json({ ok: true, service: 'muj-nucleus', version: '2.1.0' });
+  res.status(200).json({ ok: true, service: 'muj-nucleus', version: VERSION });
 });
 
 app.get('/api/status', (_req, res) => {
   res.json({
     ok: true,
     service: 'Můj Nucleus',
-    version: '2.1.0',
+    version: VERSION,
     model: MODEL,
     modelChain: MODEL_CHAIN,
     factModel: FACT_MODEL,
     factCheckAvailable: Boolean(PROJECT || API_KEY),
+    realNewsAvailable: true,
+    houndHuntAvailable: true,
+    cloudDataConfigured,
     cloudAiConfigured: Boolean(PROJECT),
     apiKeyFallbackConfigured: Boolean(API_KEY),
     pinProtected: Boolean(ACCESS_PIN)
@@ -261,9 +306,7 @@ app.get('/api/status', (_req, res) => {
 
 app.post('/api/chat', rateLimit, pinGuard, async (req, res) => {
   const message = String(req.body?.message || '').trim().slice(0, MAX_MESSAGE_CHARS);
-  if (!message) {
-    return res.status(400).json({ error: 'Zpráva je prázdná.', code: 'EMPTY_MESSAGE' });
-  }
+  if (!message) return res.status(400).json({ error: 'Zpráva je prázdná.', code: 'EMPTY_MESSAGE' });
 
   const history = normalizeHistory(req.body?.history);
   const contents = [...history, { role: 'user', parts: [{ text: message }] }];
@@ -300,35 +343,103 @@ app.post('/api/chat', rateLimit, pinGuard, async (req, res) => {
 
 app.post('/api/fact-check', rateLimit, pinGuard, async (req, res) => {
   const input = String(req.body?.input || '').trim().slice(0, MAX_FACT_CHARS);
-  if (!input) {
-    return res.status(400).json({ error: 'Vlož tvrzení, text nebo veřejnou URL k ověření.', code: 'EMPTY_FACT_CHECK' });
+  if (!input) return res.status(400).json({ error: 'Vlož tvrzení, text nebo veřejnou URL k ověření.', code: 'EMPTY_FACT_CHECK' });
+
+  try {
+    const result = await performFactCheck(input);
+    return res.json({ ok: true, ...result });
+  } catch (error) {
+    const safe = publicError(error);
+    return res.status(safe.status).json({ ...safe, model: FACT_MODEL });
   }
+});
 
-  const attempts = [];
+app.get('/api/news/feed', rateLimit, async (_req, res) => {
+  try {
+    const feed = await getNewsFeed();
+    return res.json({ ok: true, ...feed });
+  } catch (error) {
+    console.error('News feed failed:', error?.message || error);
+    return res.status(503).json({ error: 'Reálné zprávy se nyní nepodařilo načíst.', code: 'NEWS_UNAVAILABLE' });
+  }
+});
 
-  if (PROJECT) {
-    try {
-      const result = await factCheckVertex(input);
-      return res.json({ ok: true, ...result });
-    } catch (error) {
-      console.error('Vertex fact-check failed:', error?.status || error?.code || '', error?.message || error);
-      attempts.push(error);
+app.get('/api/vault', rateLimit, pinGuard, async (req, res) => {
+  try {
+    const items = await listVaultRecords(req.query?.limit);
+    return res.json({ ok: true, items });
+  } catch (error) {
+    const safe = cloudPublicError(error);
+    return res.status(safe.status).json(safe);
+  }
+});
+
+app.post('/api/vault', rateLimit, pinGuard, async (req, res) => {
+  const title = String(req.body?.title || '').trim().slice(0, 500);
+  const input = String(req.body?.input || req.body?.summary || title || '').trim().slice(0, MAX_FACT_CHARS);
+  const url = String(req.body?.url || '').trim().slice(0, 2048);
+  const summary = String(req.body?.summary || '').trim().slice(0, 4000);
+  const publishedAt = String(req.body?.publishedAt || '').trim().slice(0, 120);
+  const origin = String(req.body?.origin || 'manual').trim().slice(0, 80);
+  const verify = req.body?.verify !== false;
+
+  if (!input) return res.status(400).json({ error: 'Trezor potřebuje text nebo tvrzení.', code: 'EMPTY_VAULT_INPUT' });
+
+  try {
+    const fact = verify
+      ? await performFactCheck(input)
+      : {
+          text: 'VERDIKT: NELZE OVĚŘIT\nJISTOTA: 0 %\n\nZÁVĚR\nPoložka byla uložena bez fact-checku.',
+          sources: [],
+          queries: [],
+          provider: 'none',
+          model: 'none'
+        };
+    const record = await saveFactRecord({ title, url, input, summary, publishedAt, origin, fact });
+    return res.json({ ok: true, record, fact });
+  } catch (error) {
+    if (/Firestore|Cloud|permission|denied|CLOUD_DATA/i.test(String(error?.message || error?.code || ''))) {
+      const safe = cloudPublicError(error);
+      return res.status(safe.status).json(safe);
     }
+    const safe = publicError(error);
+    return res.status(safe.status).json({ ...safe, model: FACT_MODEL });
   }
+});
 
-  if (API_KEY) {
-    try {
-      const result = await factCheckDeveloperApi(input);
-      return res.json({ ok: true, ...result });
-    } catch (error) {
-      console.error('Gemini API fact-check failed:', error?.status || error?.code || '', error?.message || error);
-      attempts.push(error);
-    }
+app.post('/api/hound-hunt', rateLimit, pinGuard, async (req, res) => {
+  const input = String(req.body?.input || '').trim().slice(0, MAX_HOUND_CHARS);
+  const persist = req.body?.persist !== false;
+  if (!input) return res.status(400).json({ error: 'Vlož veřejný text, komentáře nebo log k analýze.', code: 'EMPTY_HOUND_INPUT' });
+
+  try {
+    const analysis = analyzeHound(input);
+    const saved = persist ? await saveHoundFinding(input, analysis) : null;
+    return res.json({ ok: true, analysis, saved });
+  } catch (error) {
+    const safe = cloudPublicError(error);
+    return res.status(safe.status).json(safe);
   }
+});
 
-  const last = attempts.at(-1) || new Error('No grounded AI provider configured');
-  const safe = publicError(last);
-  return res.status(safe.status).json({ ...safe, model: FACT_MODEL });
+app.get('/api/hound-findings', rateLimit, pinGuard, async (req, res) => {
+  try {
+    const items = await listHoundFindings(req.query?.limit);
+    return res.json({ ok: true, items });
+  } catch (error) {
+    const safe = cloudPublicError(error);
+    return res.status(safe.status).json(safe);
+  }
+});
+
+app.post('/api/cloud/smoke', rateLimit, pinGuard, async (_req, res) => {
+  try {
+    const result = await cloudSmokeTest();
+    return res.json(result);
+  } catch (error) {
+    const safe = cloudPublicError(error);
+    return res.status(safe.status).json(safe);
+  }
 });
 
 app.use(express.static('public', {
@@ -351,6 +462,6 @@ app.use((_req, res) => {
 });
 
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Můj Nucleus 2.1 listening on ${PORT}`);
-  console.log(`Chat model: ${MODEL}; Fact model: ${FACT_MODEL}; Vertex: ${Boolean(PROJECT)}; API key fallback: ${Boolean(API_KEY)}; PIN: ${Boolean(ACCESS_PIN)}`);
+  console.log(`Můj Nucleus ${VERSION} listening on ${PORT}`);
+  console.log(`Chat model: ${MODEL}; Fact model: ${FACT_MODEL}; Vertex: ${Boolean(PROJECT)}; Cloud data: ${cloudDataConfigured}; PIN: ${Boolean(ACCESS_PIN)}`);
 });
