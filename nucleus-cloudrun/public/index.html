@@ -8,6 +8,7 @@
   <link rel="manifest" href="/manifest.json" />
   <link rel="stylesheet" href="/styles.css" />
   <link rel="stylesheet" href="/hunter.css" />
+  <link rel="stylesheet" href="/vault.css" />
   <title>Můj Nucleus</title>
 </head>
 <body>
@@ -35,6 +36,8 @@
       <button class="tab active" type="button" data-view="calendarView">Kalendář</button>
       <button class="tab" type="button" data-view="chatView">Nucleus AI</button>
       <button class="tab danger" type="button" data-view="factView">Lovec dezinformací</button>
+      <button class="tab news-tab" type="button" data-view="realNewsView">Real News</button>
+      <button class="tab vault-tab" type="button" data-view="vaultView">Disinfo Trezor</button>
       <button class="tab" type="button" data-view="memoryView">Boost paměti</button>
       <button class="tab" type="button" data-view="botView">Lov botů</button>
       <button class="tab" type="button" data-view="planView">24h plán</button>
@@ -76,19 +79,52 @@
       <article id="factResultCard" class="fact-result" hidden><h3>Výsledek ověření</h3><pre id="factResult"></pre><div id="factQueriesWrap" class="fact-meta" hidden><h4>Použité vyhledávací dotazy</h4><div id="factQueries" class="query-list"></div></div><div id="factSourcesWrap" class="fact-meta" hidden><h4>Webové zdroje</h4><ol id="factSources" class="source-list"></ol></div></article>
     </section>
 
+    <section id="realNewsView" class="view module-card real-news-view" hidden>
+      <header class="vault-module-head">
+        <div>
+          <p class="eyebrow">QUANTUM LABS / REAL NEWS</p>
+          <h2>Reálné Zprávy</h2>
+          <p>Živá data z veřejných zpravodajských webů přes serverový feed Nucleusu. RSS se použije tam, kde odpovídá; při výpadku feedu se čte veřejná titulní stránka zdroje.</p>
+        </div>
+        <button id="refreshNews" type="button">Načíst živé zprávy</button>
+      </header>
+      <div id="newsState" class="cloud-state">Připraveno k načtení.</div>
+      <div id="newsSourceState" class="source-health"></div>
+      <div id="newsGrid" class="news-grid" aria-live="polite"></div>
+    </section>
+
+    <section id="vaultView" class="view module-card vault-view" hidden>
+      <header class="vault-module-head">
+        <div>
+          <p class="eyebrow">FIRESTORE / TOPICS / CORES</p>
+          <h2>Disinfo Trezor</h2>
+          <p>Uchovává původní tvrzení i jeho ověřenou korekci, verdikt, zdroje a vyhledávací dotazy. Zápis probíhá serverem do cloudových větví původního Nucleusu.</p>
+        </div>
+        <button id="reloadVault" class="secondary" type="button">Obnovit trezor</button>
+      </header>
+      <form id="vaultForm" class="vault-form">
+        <label>Název / téma<input id="vaultTitle" maxlength="500" placeholder="Např. tvrzení z příspěvku"></label>
+        <label>Veřejná URL<input id="vaultUrl" type="url" maxlength="2048" placeholder="https://…"></label>
+        <label>Původní text nebo tvrzení<textarea id="vaultInput" rows="8" maxlength="18000" placeholder="Vlož původní obsah. Nucleus jej ověří, doplní pravdivý kontext a uloží obě vrstvy." required></textarea></label>
+        <button id="vaultVerifySave" type="submit">Ověřit + uložit do cloudu</button>
+      </form>
+      <div id="vaultState" class="cloud-state">Trezor čeká na PIN a cloudové spojení.</div>
+      <div id="vaultList" class="vault-list" aria-live="polite"></div>
+    </section>
+
     <section id="memoryView" class="view module-card" hidden>
       <p class="eyebrow">KONTEXTOVÁ PAMĚŤ</p><h2>Boost paměti</h2>
       <p>Sem ulož stabilní pravidla a kontext, který má Nucleus přikládat k dalším dotazům v této PWA.</p>
       <textarea id="memoryBoost" rows="10" placeholder="Např. styl odpovědí, projekty, pravidla, co nezapomenout…"></textarea>
       <div class="button-row"><button id="saveMemory" type="button">Uložit boost</button><button id="injectMemory" class="secondary" type="button">Vložit do AI dotazu</button></div>
-      <p id="memoryState" class="mini-state">Lokální paměť je uložená jen v tomto zařízení.</p>
+      <p id="memoryState" class="mini-state">Lokální paměť je uložená jen v tomto zařízení a při AI dotazu se přikládá jako kontext.</p>
     </section>
 
     <section id="botView" class="view module-card" hidden>
-      <p class="eyebrow">BEZPEČNÁ ANALÝZA</p><h2>Lov botů</h2>
-      <p>Bez aktivního skenování sítí. Analyzuje text, komentáře nebo logy a hledá známky botího/spamového chování.</p>
-      <textarea id="botInput" rows="8" placeholder="Vlož komentáře, zprávy, logy nebo podezřelé vzorce chování…"></textarea>
-      <button id="runBotHunt" type="button">Analyzovat vzorce</button>
+      <p class="eyebrow">HOUNDS / SERVEROVÁ ANALÝZA / FIRESTORE</p><h2>Lov botů</h2>
+      <p>Analyzuje dodaný veřejný text, komentáře nebo logy na opakování, podobnost zpráv, hustotu URL, slovní rozmanitost a časový rytmus. Výsledek může uložit do <code>users/{uid}/bots</code>. Neprovádí útoky ani skryté síťové skenování.</p>
+      <textarea id="botInput" rows="10" maxlength="50000" placeholder="Vlož komentáře, zprávy nebo veřejný log. Časové značky HH:MM:SS zlepší analýzu rytmu…"></textarea>
+      <button id="runBotHunt" type="button">Spustit Hound Hunt + uložit</button>
       <pre id="botResult" class="result-box">Připraven.</pre>
     </section>
 
@@ -113,5 +149,6 @@
     <details class="settings"><summary>Nastavení</summary><label>PIN Nucleusu <input id="pin" type="password" autocomplete="off" /></label><button id="clear" type="button">Vymazat místní AI historii</button><pre id="diagnostics"></pre></details>
   </main>
   <script type="module" src="/app.js"></script>
+  <script type="module" src="/vault.js"></script>
 </body>
 </html>
