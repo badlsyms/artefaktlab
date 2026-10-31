@@ -39,3 +39,6 @@ html[data-theme=light] :is(.ok,.cloud-state.ok,.fact-state.ok) { color: #166534;
 
 .calendar-head { grid-template-columns: auto minmax(0,1fr) auto auto; }
 @media(max-width:760px) { .calendar-head { grid-template-columns: auto minmax(0,1fr) auto; } }
+/* White labels stay readable over the entire button gradient in both themes. */
+button { background: linear-gradient(135deg,#0369a1,#6d28d9); color: #fff; }
+.assistant .avatar, .module-icon { background: linear-gradient(135deg,#0369a1,#6d28d9); color: #fff; }
