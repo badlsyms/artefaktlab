@@ -1,0 +1,31 @@
+name: Nucleus access checks
+on:
+  pull_request:
+    paths: ['nucleus-cloudrun/**', '.github/workflows/nucleus-checks.yml']
+  push:
+    paths: ['nucleus-cloudrun/**', '.github/workflows/nucleus-checks.yml']
+permissions:
+  contents: read
+jobs:
+  access:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm run check && npm test
+        working-directory: nucleus-cloudrun
+  browser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --ignore-scripts playwright@1.62.1
+        working-directory: nucleus-cloudrun
+      - run: npx playwright install --with-deps chromium
+        working-directory: nucleus-cloudrun
+      - run: node tests/browser.cjs
+        working-directory: nucleus-cloudrun
