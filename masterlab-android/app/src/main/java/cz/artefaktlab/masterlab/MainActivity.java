@@ -46,6 +46,7 @@ public class MainActivity extends Activity {
     private NativePatchbay nativePatchbay;
     private OutputProbe outputProbe;
     private DualOutputProbe dualOutputProbe;
+    private NativeLanAudio lanAudio;
     private WebViewAssetLoader assetLoader;
     private ValueCallback<Uri[]> fileCallback;
     @Override public void onCreate(Bundle state) {
@@ -55,6 +56,7 @@ public class MainActivity extends Activity {
         nativePatchbay = new NativePatchbay(this);
         outputProbe = new OutputProbe(this);
         dualOutputProbe = new DualOutputProbe(this);
+        lanAudio = new NativeLanAudio(this);
         web = new WebView(this);
         web.setBackgroundColor(0xff080f18);
         if (Build.VERSION.SDK_INT >= 35) {
@@ -119,6 +121,19 @@ public class MainActivity extends Activity {
         web.evaluateJavascript(js, null);
     }
     public final class ExportBridge {
+        @JavascriptInterface public String lanStartTx(String host,int port,int inputDeviceId){
+            return lanAudio==null?"LAN NOT READY":lanAudio.startSender(host,port,inputDeviceId);
+        }
+        @JavascriptInterface public void lanStopTx(){if(lanAudio!=null)lanAudio.stopSender();}
+        @JavascriptInterface public String lanStartRx(int port,int outA,int outB,int bufferMs){
+            return lanAudio==null?"LAN NOT READY":lanAudio.startReceiver(port,outA,outB,bufferMs);
+        }
+        @JavascriptInterface public void lanStopRx(){if(lanAudio!=null)lanAudio.stopReceiver();}
+        @JavascriptInterface public void lanSetGains(float aLL,float aRL,float aLR,float aRR,float bLL,float bRL,float bLR,float bRR){
+            if(lanAudio!=null)lanAudio.setGains(aLL,aRL,aLR,aRR,bLL,bRL,bLR,bRR);
+        }
+        @JavascriptInterface public String lanDiagnostics(){return lanAudio==null?"{}":lanAudio.diagnostics();}
+        
         @JavascriptInterface public String beginDualOutputTest(int first,int second) {
             return dualOutputProbe==null?"UNAVAILABLE":dualOutputProbe.begin(first,second);
         }
@@ -127,6 +142,7 @@ public class MainActivity extends Activity {
         }
         @JavascriptInterface public void stopDualOutputTest() {
             if(dualOutputProbe!=null)dualOutputProbe.stop();
+        if(lanAudio!=null)lanAudio.shutdown();
         }
         @JavascriptInterface public String probeOutput(int outputId,int channel){
             return outputProbe==null?"NOT AVAILABLE":outputProbe.start(outputId,channel);
