@@ -53,12 +53,14 @@ public final class NativePatchbay {
             int inputBytes=Math.max(inputMin*2,4096),outputBytes=Math.max(outputMin*2,4096);
             AudioFormat captureFormat=new AudioFormat.Builder().setEncoding(AudioFormat.ENCODING_PCM_16BIT).setSampleRate(RATE).setChannelMask(INPUT_FORMAT).build();
             AudioFormat renderFormat=new AudioFormat.Builder().setEncoding(AudioFormat.ENCODING_PCM_16BIT).setSampleRate(RATE).setChannelMask(OUTPUT_FORMAT).build();
-            input=new AudioRecord.Builder().setAudioSource(MediaRecorder.AudioSource.UNPROCESSED).setAudioFormat(captureFormat).setBufferSizeInBytes(inputBytes).build();
+            int audioSource = "true".equalsIgnoreCase(manager.getProperty(AudioManager.PROPERTY_SUPPORT_AUDIO_SOURCE_UNPROCESSED)) ? MediaRecorder.AudioSource.UNPROCESSED : MediaRecorder.AudioSource.MIC;
+            input=new AudioRecord.Builder().setAudioSource(audioSource).setAudioFormat(captureFormat).setBufferSizeInBytes(inputBytes).build();
             output=new AudioTrack.Builder().setAudioAttributes(new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA).setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build())
                 .setAudioFormat(renderFormat).setBufferSizeInBytes(outputBytes).setTransferMode(AudioTrack.MODE_STREAM).build();
             if(input.getState()!=AudioRecord.STATE_INITIALIZED || output.getState()!=AudioTrack.STATE_INITIALIZED)throw new IllegalStateException("PCM init failed");
             if(!input.setPreferredDevice(src)||!output.setPreferredDevice(dst))throw new IllegalStateException("Device selection rejected");
             input.startRecording();output.play();
+            try{Thread.sleep(100);}catch(InterruptedException ignored){}
             AudioDeviceInfo actualIn=input.getRoutedDevice(),actualOut=output.getRoutedDevice();
             actualInput=actualIn==null?-1:actualIn.getId();
             actualOutput=actualOut==null?-1:actualOut.getId();
