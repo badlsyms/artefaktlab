@@ -63,8 +63,7 @@ $('start').onclick=()=>{
  if(!nativeAvailable()){message('Native PCM engine unavailable in browser');return}
  const i=Number($('input').value),o=Number($('output').value);
  if(!$('input').value||!$('output').value){message('Select one real input and one real output');return}
- if(i===o){message('Input and output must be distinct devices for initial patchbay safety');return}
- if(!confirm('NATIVE AUDIO PATCH: Check cables and feedback paths. Start with low physical output volume. Start now?'))return;
+ if(!$('safety').checked){message('Confirm low monitoring volume and no feedback loop before starting');return;}
  try{
    const result=bridge.startPatchbay(i,o);
    message(result);setMatrix();refresh();
