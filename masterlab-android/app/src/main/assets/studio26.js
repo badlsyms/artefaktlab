@@ -215,7 +215,20 @@ function drawMidi(){
  by('note-count').textContent=MIDI.count+' NOTES · '+MIDI.held.size+' HELD';
  requestAnimationFrame(drawMidi);
 }
+function nativeMidiRefresh(){
+ const select=by('native-midi');if(!select)return;
+ select.replaceChildren(new Option('USB MIDI INPUT',''));
+ try{let list=window.AndroidMasterLab?.getMidiDevices?JSON.parse(window.AndroidMasterLab.getMidiDevices()):[];
+ for(const dev of list){for(let port=0;port<(dev.outputs||0);port++){select.add(new Option(dev.name+' / OUT '+(port+1),dev.id+':'+port))}}
+ }catch(e){banner('MIDI DEVICES: '+e.message)}
+}
+function nativeMidiConnect(){
+ const v=by('native-midi').value;if(!v||!window.AndroidMasterLab?.connectMidiDevice){banner('Native USB MIDI unavailable');return}
+ const [id,port]=v.split(':').map(Number);window.AndroidMasterLab.connectMidiDevice(id,port);
+ banner('NATIVE MIDI PORT REQUESTED: '+v)
+}
 function attachMidi(){
+ window.addEventListener('masterlab-native-midi',e=>midiEvent({data:e.detail}));
  // Hook original MIDI handler without stealing MIDI clock or transport.
  try{if(typeof handleMidi==='function'){const original=handleMidi;handleMidi=function(e){midiEvent(e);return original(e)};banner('MIDI visualization ready')}}catch(e){}
 }
@@ -234,7 +247,8 @@ by('load').onclick=()=>by('file').click();
 by('file').onchange=e=>restoreSnapshot(e.target.files[0]);
 by('add-widget').onclick=addWidget;
 by('add-track').onclick=()=>{if(state.tracks.length>=12)return;state.tracks.push({name:'TRACK '+(state.tracks.length+1),bus:'aux'});savePrefs();buildTracks()};
-by('scan').onclick=enumerate;
+by('scan').onclick=()=>{enumerate();nativeMidiRefresh()};
+by('midi-connect').onclick=nativeMidiConnect;
 by('connect-ext').onclick=connectExternal;
 by('disconnect-ext').onclick=stopExternal;
 by('midi-filter').onchange=e=>state.midiFilter=Number(e.target.value);
@@ -243,6 +257,6 @@ by('bt').onclick=()=>window.AndroidMasterLab?.openBluetoothSettings?.();
 by('sound').onclick=()=>window.AndroidMasterLab?.openSoundSettings?.();
 addEventListener('pagehide',savePrefs);addEventListener('error',()=>{try{savePrefs()}catch(e){}});
 setInterval(()=>{savePrefs();updateWidgets()},4000);
-enumerate();
+enumerate();nativeMidiRefresh();
 banner('READY · VIRTUAL FOH / PHYSICAL DEVICE DIAGNOSTICS');
 })();
