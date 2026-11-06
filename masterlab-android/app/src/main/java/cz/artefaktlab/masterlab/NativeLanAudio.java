@@ -31,7 +31,7 @@ import java.util.Arrays;
 public final class NativeLanAudio {
     private static final int RATE=48000, FRAMES=240, CHANNELS=2, SAMPLES=FRAMES*CHANNELS;
     private static final int BODY=SAMPLES*2, HEADER=16, PACKET=HEADER+BODY;
-    private static final int MAGIC=0x4d4c3341;
+    private static final int MAGIC=0x4d4c3341, PING_MAGIC=0x4d4c3350;
     private final Activity activity;
     private final AudioManager audio;
     private volatile boolean sending=false,receiving=false;
@@ -90,7 +90,7 @@ public final class NativeLanAudio {
         if(source==null)return txStatus="SELECT PHYSICAL AUDIO INPUT";
         try{
             InetAddress address=InetAddress.getByName(host.trim());
-            if(!(address instanceof Inet4Address)||address.isMulticastAddress()||address.isAnyLocalAddress())
+            if(!(address instanceof Inet4Address)||!address.isSiteLocalAddress())
                 return txStatus="USE A VALID UNICAST IPv4 ADDRESS";
             int min=AudioRecord.getMinBufferSize(RATE,AudioFormat.CHANNEL_IN_STEREO,AudioFormat.ENCODING_PCM_16BIT);
             if(min<=0)return txStatus="48K STEREO CAPTURE UNSUPPORTED";
@@ -188,6 +188,13 @@ public final class NativeLanAudio {
             while(receiving){
                 try{datagram.setLength(data.length);rxSocket.receive(datagram);}
                 catch(java.net.SocketTimeoutException ignored){continue;}
+                if(datagram.getLength()==12){
+                    ByteBuffer ping=ByteBuffer.wrap(datagram.getData(),0,12).order(ByteOrder.LITTLE_ENDIAN);
+                    if(ping.getInt()==PING_MAGIC){
+                        try{rxSocket.send(new DatagramPacket(datagram.getData(),12,datagram.getAddress(),datagram.getPort()));}catch(Exception ignored){}
+                        continue;
+                    }
+                }
                 if(datagram.getLength()!=PACKET){malformed++;continue;}
                 ByteBuffer b=ByteBuffer.wrap(datagram.getData(),0,PACKET).order(ByteOrder.LITTLE_ENDIAN);
                 if(b.getInt()!=MAGIC){malformed++;continue;}
@@ -253,6 +260,39 @@ public final class NativeLanAudio {
     private void releaseReceiver(){
         receiving=false;if(rxSocket!=null){rxSocket.close();rxSocket=null;}
         close(outputA);close(outputB);outputA=null;outputB=null;
+    }
+    public String ping(String host,int port){
+        if(port<1024||port>65535)return "{\"error\":\"INVALID PORT\"}";
+        JSONObject result=new JSONObject();
+        DatagramSocket probe=null;
+        try{
+            InetAddress address=InetAddress.getByName(host.trim());
+            if(!(address instanceof Inet4Address)||!address.isSiteLocalAddress())
+                throw new IllegalArgumentException("LOCAL PRIVATE IPv4 REQUIRED");
+            probe=new DatagramSocket();
+            probe.setSoTimeout(500);
+            long sum=0,min=Long.MAX_VALUE,max=0;int answered=0;
+            for(int i=0;i<5;i++){
+                byte[] request=ByteBuffer.allocate(12).order(ByteOrder.LITTLE_ENDIAN)
+                  .putInt(PING_MAGIC).putInt(i).putInt(0).array();
+                long started=System.nanoTime();
+                probe.send(new DatagramPacket(request,request.length,address,port));
+                byte[] response=new byte[12];DatagramPacket reply=new DatagramPacket(response,response.length);
+                try{
+                    probe.receive(reply);
+                    ByteBuffer b=ByteBuffer.wrap(response).order(ByteOrder.LITTLE_ENDIAN);
+                    if(reply.getLength()!=12 || b.getInt()!=PING_MAGIC || b.getInt()!=i)continue;
+                    long ns=System.nanoTime()-started;
+                    long us=ns/1000;sum+=us;min=Math.min(min,us);max=Math.max(max,us);answered++;
+                }catch(java.net.SocketTimeoutException ignored){}
+            }
+            result.put("received",answered);result.put("sent",5);
+            result.put("avgMs",answered==0?-1:Math.round(sum/(double)answered/1000*100.0)/100.0);
+            result.put("minMs",answered==0?-1:Math.round(min/1000.0*100.0)/100.0);
+            result.put("maxMs",answered==0?-1:Math.round(max/1000.0*100.0)/100.0);
+        }catch(Exception ex){try{result.put("error",ex.getMessage());}catch(Exception ignored){}}
+        finally{if(probe!=null)probe.close();}
+        return result.toString();
     }
     public synchronized void shutdown(){stopSender();stopReceiver();}
     public String diagnostics(){
