@@ -104,6 +104,10 @@ async function enumerate(){
   const type=d.input?'IN':d.output?'OUT':'PORT',channels=Array.isArray(d.channelCounts)&&d.channelCounts.length?d.channelCounts.join('/'): '?';
   node.textContent=type+' · '+d.name+' · CH '+channels+' · '+(d.sampleRates||[]).slice(0,5).join('/')+' Hz';el.append(node)});
  if(!devices.length){let node=document.createElement('div');node.className='st-device';node.textContent='Android output/input profile not exposed';el.append(node)}
+ try{const usb=window.AndroidMasterLab?.getUsbTopology?JSON.parse(window.AndroidMasterLab.getUsbTopology()):[];
+ for(const d of usb){const classes=(d.interfaces||[]).map(i=>i.class===1?'AUDIO'+(i.subclass===3?'/MIDI':''):i.class===9?'HUB':'CLASS '+i.class).join(',');
+ const entry=document.createElement('div');entry.className='st-device';entry.textContent='USB · '+d.name+' · '+d.vendorId+':'+d.productId+' · '+(classes||'NO INTERFACES');el.append(entry)}
+ }catch(e){banner('USB SCAN: '+e.message)}
  const pick=by('ext-input');let last=pick.value||state.selectedInput;pick.replaceChildren(new Option('SYSTEM DEFAULT',''));
  try{if(navigator.mediaDevices?.enumerateDevices){
   let list=await navigator.mediaDevices.enumerateDevices();
