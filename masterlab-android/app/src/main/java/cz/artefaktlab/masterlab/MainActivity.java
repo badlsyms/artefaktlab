@@ -44,6 +44,7 @@ public class MainActivity extends Activity {
     private MidiOutputPort activeMidiPort;
     private WebView web;
     private NativePatchbay nativePatchbay;
+    private OutputProbe outputProbe;
     private WebViewAssetLoader assetLoader;
     private ValueCallback<Uri[]> fileCallback;
     @Override public void onCreate(Bundle state) {
@@ -51,6 +52,7 @@ public class MainActivity extends Activity {
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         assetLoader = new WebViewAssetLoader.Builder().addPathHandler("/assets/", new WebViewAssetLoader.AssetsPathHandler(this)).build();
         nativePatchbay = new NativePatchbay(this);
+        outputProbe = new OutputProbe(this);
         web = new WebView(this);
         web.setBackgroundColor(0xff080f18);
         if (Build.VERSION.SDK_INT >= 35) {
@@ -115,6 +117,15 @@ public class MainActivity extends Activity {
         web.evaluateJavascript(js, null);
     }
     public final class ExportBridge {
+        @JavascriptInterface public String probeOutput(int outputId,int channel){
+            return outputProbe==null?"NOT AVAILABLE":outputProbe.start(outputId,channel);
+        }
+        @JavascriptInterface public String probeOutputStatus(){
+            return outputProbe==null?"{}":outputProbe.status();
+        }
+        @JavascriptInterface public void stopOutputProbe(){
+            if(outputProbe!=null)outputProbe.stop();
+        }
         @JavascriptInterface public void requestPatchbayPermission(){
             runOnUiThread(() -> {if(checkSelfPermission(Manifest.permission.RECORD_AUDIO)!=PackageManager.PERMISSION_GRANTED)requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO},1203);});
         }
@@ -130,6 +141,7 @@ public class MainActivity extends Activity {
         }
         @JavascriptInterface public void stopPatchbay(){
             if(nativePatchbay!=null)nativePatchbay.stop();
+        if(outputProbe!=null)outputProbe.stop();
         }
         @JavascriptInterface public String getMidiDevices() {
             JSONArray devices = new JSONArray();
