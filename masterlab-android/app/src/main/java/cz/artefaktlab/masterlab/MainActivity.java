@@ -18,6 +18,7 @@ import android.media.AudioManager;
 import android.media.AudioDeviceInfo;
 import android.provider.Settings;
 import android.Manifest;
+import androidx.webkit.WebViewAssetLoader;
 import android.content.pm.PackageManager;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -27,10 +28,12 @@ public class MainActivity extends Activity {
     private static final int PERMISSION_CAPTURE = 1202;
     private PermissionRequest pendingCapture;
     private WebView web;
+    private WebViewAssetLoader assetLoader;
     private ValueCallback<Uri[]> fileCallback;
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        assetLoader = new WebViewAssetLoader.Builder().addPathHandler("/assets/", new WebViewAssetLoader.AssetsPathHandler(this)).build();
         web = new WebView(this);
         web.setBackgroundColor(0xff080f18);
         WebSettings settings = web.getSettings();
@@ -46,7 +49,7 @@ public class MainActivity extends Activity {
         web.setWebChromeClient(new WebChromeClient() {
             @Override public void onPermissionRequest(PermissionRequest request) {
                 runOnUiThread(() -> {
-                    boolean audioOnly = true;
+                    boolean audioOnly = "appassets.androidplatform.net".equals(request.getOrigin().getHost());
                     for (String r : request.getResources()) {
                         if (!PermissionRequest.RESOURCE_AUDIO_CAPTURE.equals(r)) audioOnly = false;
                     }
@@ -71,14 +74,17 @@ public class MainActivity extends Activity {
             }
         });
         web.setWebViewClient(new WebViewClient() {
+            @Override public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+                return assetLoader.shouldInterceptRequest(request.getUrl());
+            }
             @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 String u = request.getUrl().toString();
-                return !u.startsWith("file:///android_asset/");
+                return !u.startsWith("https://appassets.androidplatform.net/assets/");
             }
             @Override public void onPageFinished(WebView v, String url) { installDownloadBridge(); }
         });
         setContentView(web);
-        web.loadUrl("file:///android_asset/index.html");
+        web.loadUrl("https://appassets.androidplatform.net/assets/index.html");
     }
     private void installDownloadBridge() {
         String js = "(function(){document.addEventListener('click',async function(ev){var a=ev.target.closest&&ev.target.closest('a[download]');if(!a||!a.href.startsWith('blob:'))return;ev.preventDefault();try{var blob=await fetch(a.href).then(r=>r.blob());var reader=new FileReader();reader.onload=function(){AndroidMasterLab.save(a.download||'masterlab-export',reader.result)};reader.readAsDataURL(blob)}catch(e){console.error(e)}},true)})();";
