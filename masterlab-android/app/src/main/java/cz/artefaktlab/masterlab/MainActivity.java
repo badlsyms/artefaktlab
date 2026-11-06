@@ -133,6 +133,7 @@ public class MainActivity extends Activity {
             if(lanAudio!=null)lanAudio.setGains(aLL,aRL,aLR,aRR,bLL,bRL,bLR,bRR);
         }
         @JavascriptInterface public String lanDiagnostics(){return lanAudio==null?"{}":lanAudio.diagnostics();}
+        @JavascriptInterface public String lanPing(String host,int port){return lanAudio==null?"{}":lanAudio.ping(host,port);}
         
         @JavascriptInterface public String beginDualOutputTest(int first,int second) {
             return dualOutputProbe==null?"UNAVAILABLE":dualOutputProbe.begin(first,second);
