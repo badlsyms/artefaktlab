@@ -41,6 +41,8 @@ public final class NativeLanAudio {
     private volatile long sent=0,received=0,missing=0,late=0,underruns=0,malformed=0,skipped=0,bytes=0;
     private volatile int queueDepth=0,targetPackets=8;
     private volatile int actualRate=RATE;
+    private volatile float jitterMs=0;
+    private volatile long previousArrivalNs=0;
     private Thread sender,listener,player;
     private DatagramSocket txSocket,rxSocket;
     private AudioRecord record;
@@ -157,6 +159,7 @@ public final class NativeLanAudio {
         rxDeviceA=outputIdA;rxDeviceB=outputIdB;
         routeA=-1;routeB=-1;
         received=missing=late=underruns=malformed=skipped=0;
+        jitterMs=0;previousArrivalNs=0;
         synchronized(lock){packets.clear();queueDepth=0;}
         try{
             outputA=openTrack(a);
@@ -193,6 +196,10 @@ public final class NativeLanAudio {
                 for(int i=0;i<pcm.length;i++)pcm[i]=b.getShort();
                 synchronized(lock){
                     if(lastSeq>=0&&seq<=lastSeq){late++;continue;}
+                    long arrival=System.nanoTime();
+                    if(previousArrivalNs!=0){float variation=Math.abs((arrival-previousArrivalNs)/1000000f-5f);
+                        jitterMs+= (variation-jitterMs)*.0625f;}
+                    previousArrivalNs=arrival;
                     if(lastSeq>=0&&seq>lastSeq+1)missing+=(long)seq-lastSeq-1;
                     lastSeq=seq;received++;
                     packets.put(seq,pcm);
@@ -257,6 +264,7 @@ public final class NativeLanAudio {
             j.put("late",late);j.put("skipped",skipped);j.put("underruns",underruns);
             j.put("malformed",malformed);j.put("queuePackets",queueDepth);
             j.put("configuredBufferMs",targetPackets*5);
+            j.put("jitterMs",jitterMs);
             j.put("inputId",txDevice);j.put("outA",routeA);j.put("outB",routeB);
             j.put("sampleRate",RATE);j.put("channels",CHANNELS);
         }catch(Exception ignored){}
