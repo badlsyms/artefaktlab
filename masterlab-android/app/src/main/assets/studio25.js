@@ -60,11 +60,10 @@ function chainNodes(ctx,src,dest){
 function apply(nodes,ctx){
  if(!nodes)return;const now=ctx.currentTime;
  nodes.g.forEach((n,i)=>{n.gain.setTargetAtTime(STATE.g.on?STATE.g.values[i]:0,now,.01)});
- nodes.p.forEach((n,i)=>{const b=STATE.p.bands[i];n.type=b.type;n.frequency.setTargetAtTime(Math.min(b.freq,ctx.sampleRate*.45),now,.01);n.Q.setTargetAtTime(b.q,now,.01);n.gain.setTargetAtTime(STATE.p.on&&b.on?b.gain:0,now,.01)});
+ nodes.p.forEach((n,i)=>{const b=STATE.p.bands[i];n.type=STATE.p.on&&b.on?b.type:'allpass';n.frequency.setTargetAtTime(Math.min(b.freq,ctx.sampleRate*.45),now,.01);n.Q.setTargetAtTime(b.q,now,.01);n.gain.setTargetAtTime(STATE.p.on&&b.on?b.gain:0,now,.01)});
  const c=STATE.c;nodes.compressor.threshold.setTargetAtTime(c.threshold,now,.01);nodes.compressor.ratio.setTargetAtTime(c.ratio,now,.01);nodes.compressor.knee.setTargetAtTime(c.knee,now,.01);nodes.compressor.attack.setTargetAtTime(c.attack,now,.01);nodes.compressor.release.setTargetAtTime(c.release,now,.01);
  nodes.dry.gain.setTargetAtTime(c.on?1-c.mix:1,now,.01);nodes.wet.gain.setTargetAtTime(c.on?c.mix:0,now,.01);nodes.post.gain.setTargetAtTime(Math.pow(10,c.makeup/20),now,.01);
 }
-function correct(db){return 10**(-db/20)}
 function updateAudio(){if(live&&typeof audioCtx!=='undefined'&&audioCtx)apply(live,audioCtx)}
 window.initStudio24Audio=function(upstream){
  if(!audioCtx)return upstream;const input=audioCtx.createGain(),output=audioCtx.createGain();
