@@ -14,7 +14,7 @@ function restore(){
  $('host').value=config.host;$('port').value=config.port;$('buffer').value=config.buffer;
 }
 function scan(){
- save();
+ if($('capture').options.length>1)save();
  const values={capture:config.txId,'out-a':config.outA,'out-b':config.outB};
  const devices=getDevices();const make=(id,items,empty)=>{
   const sel=$(id);sel.replaceChildren(new Option(empty,''));
