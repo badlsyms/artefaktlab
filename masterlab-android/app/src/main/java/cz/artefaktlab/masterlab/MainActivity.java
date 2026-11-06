@@ -19,6 +19,13 @@ import android.media.AudioDeviceInfo;
 import android.hardware.usb.UsbDevice;
 import android.hardware.usb.UsbInterface;
 import android.hardware.usb.UsbManager;
+import android.media.midi.MidiManager;
+import android.media.midi.MidiDeviceInfo;
+import android.media.midi.MidiDevice;
+import android.media.midi.MidiOutputPort;
+import android.media.midi.MidiReceiver;
+import android.os.Handler;
+import android.os.Looper;
 import android.provider.Settings;
 import android.Manifest;
 import androidx.webkit.WebViewAssetLoader;
@@ -30,6 +37,8 @@ public class MainActivity extends Activity {
     private static final int PICK_FILES = 1201;
     private static final int PERMISSION_CAPTURE = 1202;
     private PermissionRequest pendingCapture;
+    private MidiDevice activeMidiDevice;
+    private MidiOutputPort activeMidiPort;
     private WebView web;
     private WebViewAssetLoader assetLoader;
     private ValueCallback<Uri[]> fileCallback;
@@ -94,6 +103,53 @@ public class MainActivity extends Activity {
         web.evaluateJavascript(js, null);
     }
     public final class ExportBridge {
+        @JavascriptInterface public String getMidiDevices() {
+            JSONArray devices = new JSONArray();
+            try {
+                MidiManager manager = (MidiManager)getSystemService(MIDI_SERVICE);
+                if(manager == null) return devices.toString();
+                for(MidiDeviceInfo info : manager.getDevices()) {
+                    JSONObject item = new JSONObject();
+                    item.put("id", info.getId());
+                    item.put("outputs", info.getOutputPortCount());
+                    item.put("inputs", info.getInputPortCount());
+                    String name = info.getProperties().getString(MidiDeviceInfo.PROPERTY_NAME);
+                    item.put("name", name != null ? name : "MIDI DEVICE");
+                    devices.put(item);
+                }
+            } catch(Exception e) { return "[]"; }
+            return devices.toString();
+        }
+        @JavascriptInterface public void connectMidiDevice(int id, int port) {
+            runOnUiThread(() -> {
+                try {
+                    if(activeMidiPort != null){activeMidiPort.close();activeMidiPort=null;}
+                    if(activeMidiDevice != null){activeMidiDevice.close();activeMidiDevice=null;}
+                    MidiManager manager=(MidiManager)getSystemService(MIDI_SERVICE);
+                    if(manager==null)return;
+                    for(MidiDeviceInfo info : manager.getDevices()) {
+                        if(info.getId()!=id || port<0 || port>=info.getOutputPortCount())continue;
+                        manager.openDevice(info, device -> {
+                            if(device==null)return;
+                            activeMidiDevice=device;
+                            activeMidiPort=device.openOutputPort(port);
+                            if(activeMidiPort==null)return;
+                            activeMidiPort.connect(new MidiReceiver(){
+                                @Override public void onSend(byte[] data, int offset, int count, long timestamp) {
+                                    JSONArray bytes=new JSONArray();
+                                    for(int i=0;i<count;i++)bytes.put(data[offset+i]&255);
+                                    final String script="window.dispatchEvent(new CustomEvent('masterlab-native-midi',{detail:"+bytes.toString()+"}));";
+                                    runOnUiThread(()->{if(web!=null)web.evaluateJavascript(script,null);});
+                                }
+                            });
+                        },new Handler(Looper.getMainLooper()));
+                        break;
+                    }
+                } catch(Exception e) {
+                    Toast.makeText(MainActivity.this,"MIDI: "+e.getMessage(),Toast.LENGTH_LONG).show();
+                }
+            });
+        }
         @JavascriptInterface public String getUsbTopology() {
             JSONArray devices = new JSONArray();
             try {
@@ -222,6 +278,7 @@ public class MainActivity extends Activity {
     }
     @Override protected void onDestroy() {
         if(pendingCapture!=null){pendingCapture.deny();pendingCapture=null;}
+        try{if(activeMidiPort!=null)activeMidiPort.close();if(activeMidiDevice!=null)activeMidiDevice.close();}catch(Exception ignored){}
         if(fileCallback!=null) fileCallback.onReceiveValue(null);
         web.removeJavascriptInterface("AndroidMasterLab");
         web.destroy();
