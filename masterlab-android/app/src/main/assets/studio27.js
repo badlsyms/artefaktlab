@@ -5,6 +5,8 @@ const $=id=>document.getElementById('ml27-'+id);
 const bridge=window.AndroidMasterLab;
 const state={input:-1,output:-1,levels:[1,0,0,1],active:false};
 const names=['L → L','R → L','L → R','R → R'];
+function persist(){try{localStorage.setItem('masterlab27-native-patch',JSON.stringify({input:$('input').value,output:$('output').value,levels:state.levels}))}catch(e){}}
+function restore(){try{const p=JSON.parse(localStorage.getItem('masterlab27-native-patch')||'null');if(!p)return;if(Array.isArray(p.levels)&&p.levels.length===4)state.levels=p.levels.map(v=>Math.max(0,Math.min(2,Number(v)||0)));for(const id of ['input','output'])if([...$(id).options].some(o=>o.value===p[id]))$(id).value=p[id];}catch(e){}}
 function message(s){$('status').textContent=s;}
 function nativeAvailable(){return !!(bridge&&bridge.startPatchbay&&bridge.getPatchbayStatus)}
 function listDevices(){
@@ -18,6 +20,7 @@ function listDevices(){
    if(d.output)outSel.add(new Option(name,String(d.id)));
  }
  if(arr.length===0)message('No native devices detected');
+ restore();
  $('status').textContent='AUDIO DEVICES '+arr.length+' · '+(nativeAvailable()?'NATIVE READY':'WEB ONLY');
 }
 function setMatrix(){
@@ -31,7 +34,7 @@ function drawMatrix(){
   const range=document.createElement('input');range.type='range';range.min='0';range.max='2';range.step='.01';range.value=state.levels[i];
   const val=document.createElement('output');val.textContent=state.levels[i].toFixed(2);
   range.setAttribute('aria-label',name+' gain');
-  range.oninput=()=>{state.levels[i]=Number(range.value);val.textContent=state.levels[i].toFixed(2);setMatrix()};
+  range.oninput=()=>{state.levels[i]=Number(range.value);val.textContent=state.levels[i].toFixed(2);setMatrix();persist()};
   row.append(t,range,val);box.append(row);
  });
 }
@@ -44,7 +47,7 @@ function preset(id){
  case 'left':state.levels=[1,0,1,0];break;
  case 'right':state.levels=[0,1,0,1];break;
  }
- drawMatrix();setMatrix();
+ drawMatrix();setMatrix();persist();
 }
 function refresh(){
  if(!nativeAvailable())return;
@@ -59,6 +62,7 @@ function refresh(){
 function stop(){if(nativeAvailable()){bridge.stopPatchbay();refresh()}}
 $('permission').onclick=()=>{if(bridge?.requestPatchbayPermission)bridge.requestPatchbayPermission()};
 $('scan').onclick=listDevices;
+$('input').onchange=persist;$('output').onchange=persist;
 $('start').onclick=()=>{
  if(!nativeAvailable()){message('Native PCM engine unavailable in browser');return}
  const i=Number($('input').value),o=Number($('output').value);
@@ -85,6 +89,6 @@ $('import').onchange=async e=>{
   message('PATCH LOADED · NOT STARTED');
  }catch(err){message(err.message)}
 };
-drawMatrix();listDevices();preset('mute');refresh();
+drawMatrix();listDevices();restore();drawMatrix();setMatrix();refresh();
 setInterval(refresh,2000);
 })();
