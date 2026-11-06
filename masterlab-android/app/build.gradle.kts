@@ -6,8 +6,8 @@ android {
     applicationId = "cz.artefaktlab.masterlab"
     minSdk = 26
     targetSdk = 35
-    versionCode = 211
-    versionName = "2.1.1"
+    versionCode = 220
+    versionName = "2.2.0"
   }
   buildTypes { getByName("release") { isMinifyEnabled = false } }
   compileOptions {
