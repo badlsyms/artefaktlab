@@ -14,6 +14,11 @@ import android.widget.Toast;
 import android.util.Base64;
 import java.io.OutputStream;
 import java.util.Locale;
+import android.media.AudioManager;
+import android.media.AudioDeviceInfo;
+import android.provider.Settings;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 public class MainActivity extends Activity {
     private static final int PICK_FILES = 1201;
@@ -61,6 +66,36 @@ public class MainActivity extends Activity {
         web.evaluateJavascript(js, null);
     }
     public final class ExportBridge {
+        @JavascriptInterface public String getAudioDevices() {
+            JSONArray devices = new JSONArray();
+            try {
+                AudioManager manager = (AudioManager)getSystemService(AUDIO_SERVICE);
+                if (manager == null) return devices.toString();
+                for (AudioDeviceInfo d : manager.getDevices(AudioManager.GET_DEVICES_OUTPUTS)) {
+                    JSONObject item = new JSONObject();
+                    String name = d.getProductName() != null ? d.getProductName().toString() : "Audio Output";
+                    item.put("name", name);
+                    item.put("type", d.getType());
+                    item.put("id", d.getId());
+                    devices.put(item);
+                }
+            } catch (Exception e) {
+                return "[]";
+            }
+            return devices.toString();
+        }
+        @JavascriptInterface public void openBluetoothSettings() {
+            runOnUiThread(() -> {
+                try { startActivity(new Intent(Settings.ACTION_BLUETOOTH_SETTINGS)); }
+                catch (Exception e) { Toast.makeText(MainActivity.this, "Bluetooth settings unavailable", Toast.LENGTH_SHORT).show(); }
+            });
+        }
+        @JavascriptInterface public void openSoundSettings() {
+            runOnUiThread(() -> {
+                try { startActivity(new Intent(Settings.ACTION_SOUND_SETTINGS)); }
+                catch (Exception e) { Toast.makeText(MainActivity.this, "Sound settings unavailable", Toast.LENGTH_SHORT).show(); }
+            });
+        }
         @JavascriptInterface public void save(String name, String dataUrl) {
             new Thread(() -> {
                 try {
@@ -72,6 +107,8 @@ public class MainActivity extends Activity {
                     String ext = safe.toLowerCase(Locale.ROOT);
                     String mime = ext.endsWith(".wav") ? "audio/wav" :
                           ext.endsWith(".webm") ? "video/webm" :
+                          ext.endsWith(".ogg") ? "audio/ogg" :
+                          ext.endsWith(".m4a") ? "audio/mp4" :
                           ext.endsWith(".mp4") ? "video/mp4" :
                           ext.endsWith(".json") ? "application/json" : "application/octet-stream";
                     ContentValues values = new ContentValues();
