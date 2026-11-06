@@ -1,0 +1,13 @@
+
+.ml28-panel{border-top-color:#b3baba!important}
+.ml28-row{display:flex;gap:4px;align-items:center;flex-wrap:wrap;padding:3px}
+.ml28-row button,.ml28-row select{min-height:26px;padding:4px 7px;font:10px ui-monospace,monospace;border:1px solid var(--ml-edge,#5b7179);color:#d8eff0;background:linear-gradient(#29343a,#131f25);border-radius:2px}
+.ml28-row select{flex:1 1 130px;min-width:0}
+.ml28-layout{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin:4px 0}
+.ml28-card{background:linear-gradient(135deg,#293436,#111c20);border:1px solid #5c7272;padding:7px;min-width:0}
+.ml28-card h3{font:700 11px ui-monospace,monospace;color:var(--ml-accent,#edcd89);margin:0 0 6px}
+.ml28-note{font:9px ui-monospace,monospace;color:#b6c7c9;margin:3px 0}
+.ml28-cc-row{display:grid;grid-template-columns:minmax(0,1fr) 90px 28px;align-items:center;gap:3px;padding:3px;border-bottom:1px solid #354a4d;font:10px ui-monospace,monospace}
+.ml28-cc-row button{padding:4px;font-size:9px;min-height:24px}
+.ml28-led{font:11px ui-monospace,monospace;color:#7ce1d3;padding:5px;white-space:normal}
+@media(max-width:620px){.ml28-layout{grid-template-columns:minmax(0,1fr)}}
