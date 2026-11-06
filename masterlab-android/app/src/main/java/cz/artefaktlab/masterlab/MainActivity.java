@@ -71,12 +71,22 @@ public class MainActivity extends Activity {
             try {
                 AudioManager manager = (AudioManager)getSystemService(AUDIO_SERVICE);
                 if (manager == null) return devices.toString();
-                for (AudioDeviceInfo d : manager.getDevices(AudioManager.GET_DEVICES_OUTPUTS)) {
+                for (AudioDeviceInfo d : manager.getDevices(AudioManager.GET_DEVICES_ALL)) {
                     JSONObject item = new JSONObject();
-                    String name = d.getProductName() != null ? d.getProductName().toString() : "Audio Output";
-                    item.put("name", name);
+                    item.put("name", d.getProductName() != null ? d.getProductName().toString() : "Audio Device");
                     item.put("type", d.getType());
                     item.put("id", d.getId());
+                    item.put("input", d.isSource());
+                    item.put("output", d.isSink());
+                    item.put("address", d.getAddress());
+                    int[] counts = d.getChannelCounts();
+                    JSONArray countArray = new JSONArray();
+                    for (int count : counts) countArray.put(count);
+                    item.put("channelCounts", countArray);
+                    int[] rates = d.getSampleRates();
+                    JSONArray rateArray = new JSONArray();
+                    for (int rate : rates) rateArray.put(rate);
+                    item.put("sampleRates", rateArray);
                     devices.put(item);
                 }
             } catch (Exception e) {
