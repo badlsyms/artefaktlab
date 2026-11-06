@@ -65,7 +65,7 @@ function apply(nodes,ctx){
  nodes.dry.gain.setTargetAtTime(c.on?1-c.mix:1,now,.01);nodes.wet.gain.setTargetAtTime(c.on?c.mix:0,now,.01);nodes.post.gain.setTargetAtTime(Math.pow(10,c.makeup/20),now,.01);
 }
 function correct(db){return 10**(-db/20)}
-function updateAudio(){if(live&&window.audioCtx)apply(live,audioCtx)}
+function updateAudio(){if(live&&typeof audioCtx!=='undefined'&&audioCtx)apply(live,audioCtx)}
 window.initStudio24Audio=function(upstream){
  if(!audioCtx)return upstream;const input=audioCtx.createGain(),output=audioCtx.createGain();
  upstream.connect(input);live=chainNodes(audioCtx,input,output);apply(live,audioCtx);return output;
