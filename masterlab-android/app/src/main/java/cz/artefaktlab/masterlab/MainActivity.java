@@ -16,6 +16,9 @@ import java.io.OutputStream;
 import java.util.Locale;
 import android.media.AudioManager;
 import android.media.AudioDeviceInfo;
+import android.hardware.usb.UsbDevice;
+import android.hardware.usb.UsbInterface;
+import android.hardware.usb.UsbManager;
 import android.provider.Settings;
 import android.Manifest;
 import androidx.webkit.WebViewAssetLoader;
@@ -91,6 +94,32 @@ public class MainActivity extends Activity {
         web.evaluateJavascript(js, null);
     }
     public final class ExportBridge {
+        @JavascriptInterface public String getUsbTopology() {
+            JSONArray devices = new JSONArray();
+            try {
+                UsbManager manager = (UsbManager)getSystemService(USB_SERVICE);
+                if (manager == null) return devices.toString();
+                for (UsbDevice d : manager.getDeviceList().values()) {
+                    JSONObject item = new JSONObject();
+                    item.put("name", d.getProductName() != null ? d.getProductName() : "USB DEVICE");
+                    item.put("vendorId", d.getVendorId());
+                    item.put("productId", d.getProductId());
+                    item.put("deviceClass", d.getDeviceClass());
+                    JSONArray interfaces = new JSONArray();
+                    for (int i = 0; i < d.getInterfaceCount(); i++) {
+                        UsbInterface inf = d.getInterface(i);
+                        JSONObject entry = new JSONObject();
+                        entry.put("class", inf.getInterfaceClass());
+                        entry.put("subclass", inf.getInterfaceSubclass());
+                        entry.put("endpoints", inf.getEndpointCount());
+                        interfaces.put(entry);
+                    }
+                    item.put("interfaces", interfaces);
+                    devices.put(item);
+                }
+            } catch (Exception e) { return "[]"; }
+            return devices.toString();
+        }
         @JavascriptInterface public String getAudioDevices() {
             JSONArray devices = new JSONArray();
             try {
