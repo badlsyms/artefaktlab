@@ -17,6 +17,10 @@ import android.widget.Toast;
 import android.util.Base64;
 import java.io.OutputStream;
 import java.util.Locale;
+import java.net.NetworkInterface;
+import java.net.InetAddress;
+import java.net.Inet4Address;
+import java.util.Enumeration;
 import android.media.AudioManager;
 import android.media.AudioDeviceInfo;
 import android.hardware.usb.UsbDevice;
@@ -121,6 +125,27 @@ public class MainActivity extends Activity {
         web.evaluateJavascript(js, null);
     }
     public final class ExportBridge {
+        @JavascriptInterface public String lanLocalAddresses(){
+            JSONArray addresses=new JSONArray();
+            try{
+                Enumeration<NetworkInterface> networks=NetworkInterface.getNetworkInterfaces();
+                while(networks!=null && networks.hasMoreElements()){
+                    NetworkInterface net=networks.nextElement();
+                    if(!net.isUp()||net.isLoopback())continue;
+                    Enumeration<InetAddress> list=net.getInetAddresses();
+                    while(list.hasMoreElements()){
+                        InetAddress addr=list.nextElement();
+                        if(addr instanceof Inet4Address && addr.isSiteLocalAddress()){
+                            JSONObject item=new JSONObject();
+                            item.put("interface",net.getName());
+                            item.put("address",addr.getHostAddress());
+                            addresses.put(item);
+                        }
+                    }
+                }
+            }catch(Exception ignored){}
+            return addresses.toString();
+        }
         @JavascriptInterface public String lanStartTx(String host,int port,int inputDeviceId){
             return lanAudio==null?"LAN NOT READY":lanAudio.startSender(host,port,inputDeviceId);
         }
