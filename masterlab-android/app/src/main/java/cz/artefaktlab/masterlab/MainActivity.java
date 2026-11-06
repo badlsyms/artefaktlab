@@ -45,6 +45,7 @@ public class MainActivity extends Activity {
     private WebView web;
     private NativePatchbay nativePatchbay;
     private OutputProbe outputProbe;
+    private DualOutputProbe dualOutputProbe;
     private WebViewAssetLoader assetLoader;
     private ValueCallback<Uri[]> fileCallback;
     @Override public void onCreate(Bundle state) {
@@ -53,6 +54,7 @@ public class MainActivity extends Activity {
         assetLoader = new WebViewAssetLoader.Builder().addPathHandler("/assets/", new WebViewAssetLoader.AssetsPathHandler(this)).build();
         nativePatchbay = new NativePatchbay(this);
         outputProbe = new OutputProbe(this);
+        dualOutputProbe = new DualOutputProbe(this);
         web = new WebView(this);
         web.setBackgroundColor(0xff080f18);
         if (Build.VERSION.SDK_INT >= 35) {
@@ -117,6 +119,15 @@ public class MainActivity extends Activity {
         web.evaluateJavascript(js, null);
     }
     public final class ExportBridge {
+        @JavascriptInterface public String beginDualOutputTest(int first,int second) {
+            return dualOutputProbe==null?"UNAVAILABLE":dualOutputProbe.begin(first,second);
+        }
+        @JavascriptInterface public String getDualOutputStatus() {
+            return dualOutputProbe==null?"{}":dualOutputProbe.status();
+        }
+        @JavascriptInterface public void stopDualOutputTest() {
+            if(dualOutputProbe!=null)dualOutputProbe.stop();
+        }
         @JavascriptInterface public String probeOutput(int outputId,int channel){
             return outputProbe==null?"NOT AVAILABLE":outputProbe.start(outputId,channel);
         }
@@ -125,6 +136,7 @@ public class MainActivity extends Activity {
         }
         @JavascriptInterface public void stopOutputProbe(){
             if(outputProbe!=null)outputProbe.stop();
+        if(dualOutputProbe!=null)dualOutputProbe.stop();
         }
         @JavascriptInterface public void requestPatchbayPermission(){
             runOnUiThread(() -> {if(checkSelfPermission(Manifest.permission.RECORD_AUDIO)!=PackageManager.PERMISSION_GRANTED)requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO},1203);});
