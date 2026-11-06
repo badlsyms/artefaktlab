@@ -17,11 +17,15 @@ import java.util.Locale;
 import android.media.AudioManager;
 import android.media.AudioDeviceInfo;
 import android.provider.Settings;
+import android.Manifest;
+import android.content.pm.PackageManager;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
 public class MainActivity extends Activity {
     private static final int PICK_FILES = 1201;
+    private static final int PERMISSION_CAPTURE = 1202;
+    private PermissionRequest pendingCapture;
     private WebView web;
     private ValueCallback<Uri[]> fileCallback;
     @Override public void onCreate(Bundle state) {
@@ -40,6 +44,21 @@ public class MainActivity extends Activity {
         WebView.setWebContentsDebuggingEnabled(false);
         web.addJavascriptInterface(new ExportBridge(), "AndroidMasterLab");
         web.setWebChromeClient(new WebChromeClient() {
+            @Override public void onPermissionRequest(PermissionRequest request) {
+                runOnUiThread(() -> {
+                    boolean audioOnly = true;
+                    for (String r : request.getResources()) {
+                        if (!PermissionRequest.RESOURCE_AUDIO_CAPTURE.equals(r)) audioOnly = false;
+                    }
+                    if (!audioOnly || request.getResources().length != 1) { request.deny(); return; }
+                    if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                        request.grant(new String[]{PermissionRequest.RESOURCE_AUDIO_CAPTURE});
+                    } else {
+                        pendingCapture = request;
+                        requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, PERMISSION_CAPTURE);
+                    }
+                });
+            }
             @Override public boolean onShowFileChooser(WebView view, ValueCallback<Uri[]> callback, FileChooserParams params) {
                 if (fileCallback != null) fileCallback.onReceiveValue(null);
                 fileCallback = callback;
@@ -138,6 +157,15 @@ public class MainActivity extends Activity {
             }).start();
         }
     }
+    @Override public void onRequestPermissionsResult(int code, String[] permissions, int[] grants) {
+        super.onRequestPermissionsResult(code, permissions, grants);
+        if (code == PERMISSION_CAPTURE && pendingCapture != null) {
+            PermissionRequest req = pendingCapture;
+            pendingCapture = null;
+            if (grants.length > 0 && grants[0] == PackageManager.PERMISSION_GRANTED) req.grant(new String[]{PermissionRequest.RESOURCE_AUDIO_CAPTURE});
+            else req.deny();
+        }
+    }
     @Override protected void onActivityResult(int request, int result, Intent data) {
         super.onActivityResult(request, result, data);
         if(request != PICK_FILES || fileCallback == null) return;
@@ -158,6 +186,7 @@ public class MainActivity extends Activity {
         else super.onBackPressed();
     }
     @Override protected void onDestroy() {
+        if(pendingCapture!=null){pendingCapture.deny();pendingCapture=null;}
         if(fileCallback!=null) fileCallback.onReceiveValue(null);
         web.removeJavascriptInterface("AndroidMasterLab");
         web.destroy();
