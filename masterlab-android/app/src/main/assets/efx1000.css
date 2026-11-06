@@ -1,0 +1,24 @@
+
+/* EFX-1000 INSPIRED - HARDWARE FACEPLATE */
+.efx1000{--steel:#747e80;--gold:#e3c560;background:linear-gradient(160deg,#575a57 0,#222826 9%,#151b1e 55%,#272a29 100%);border:3px solid #737876;border-radius:9px;box-shadow:inset 0 3px 4px #ffffff29,inset 0 -5px 14px #000b,0 12px 25px #000a;padding:9px;max-width:100%}
+.efx1000 *{box-sizing:border-box}.efx1000 .efx-head{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:1px 6px 8px;border-bottom:1px solid #667173;flex-wrap:wrap}
+.efx1000 .efx-brand{color:#ece8de;font-weight:900;letter-spacing:.12em;font-size:13px}.efx1000 .efx-brand em{font-style:normal;color:#ddcd76;font-size:9px}
+.efx1000 .efx-head button{padding:3px 7px;font-size:10px;min-height:24px;border-radius:2px}
+.efx1000 .efx-screen{display:inline-block;color:#f75766;background:#090b0b;padding:3px 7px;min-width:53px;text-align:center;font:700 17px ui-monospace,monospace;letter-spacing:.05em;border:1px solid #65665b;text-shadow:0 0 7px #fb2439a6}
+.efx1000 .efx-bay{display:grid;grid-template-columns:1fr 1fr;gap:7px;padding-top:8px}.efx1000 .efx-side{background:#161b1d;border:1px solid #656d69;min-width:0;padding:7px;border-radius:3px;box-shadow:inset 0 0 18px #0008}
+.efx1000 .efx-small-title{font-size:10px;letter-spacing:.13em;font-weight:bold;color:#d5ccba;margin:0 0 7px}
+.efx1000 .efx-buttons{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:3px;margin-bottom:8px}.efx1000 .efx-buttons button{padding:5px 1px;color:#21221b;background:linear-gradient(#ffe882,#d9aa28);border:1px solid #987526;box-shadow:inset 0 1px #fff5b3,0 2px #0008;font-size:8px;font-weight:800;min-height:28px;border-radius:2px}
+.efx1000 .efx-buttons button.active{background:linear-gradient(#fc646e,#a92e3d);color:white;border-color:#fe8586;box-shadow:0 0 8px #f34b5370}
+.efx1000 .efx-beats{display:flex;gap:3px;flex-wrap:wrap;justify-content:center;margin:6px 0}.efx1000 .efx-beats button{font-size:9px;min-width:27px;flex:1;padding:5px 2px;min-height:23px}
+.efx1000 button.efx-on{border-color:#66e8b7;color:#abffce;background:linear-gradient(#1b4540,#10221e)}
+.efx1000 .efx-turns{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;align-items:start;justify-items:center}
+.efx1000 .efx-knob-wrap{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:0}.efx1000 .efx-knob-label{font:8px ui-monospace,monospace;letter-spacing:.05em;color:#c4cbc7}
+.efx1000 .efx-turn{--angle:0deg;position:relative;width:clamp(34px,7vw,52px);height:clamp(34px,7vw,52px);border-radius:50%;border:3px solid #111;box-shadow:0 3px 5px #000b,inset 0 1px 3px #a8b0ad;background:radial-gradient(circle at 30% 23%,#777d76 0%,#404640 42%,#1a2120 82%);touch-action:none;cursor:ns-resize}
+.efx1000 .efx-turn:before{content:'';position:absolute;width:3px;height:31%;border-radius:3px;top:9%;left:calc(50% - 1.5px);background:#e6dab1;transform-origin:center 135%;transform:rotate(var(--angle));box-shadow:0 0 4px #fff6}
+.efx1000 .efx-value{font:9px ui-monospace,monospace;color:#f2d17c}
+.efx1000 .efx-jog{width:clamp(100px,20vw,172px);height:clamp(100px,20vw,172px);border:6px ridge #606868;border-radius:50%;margin:4px auto;background:repeating-conic-gradient(from 3deg,#232927 0 3deg,#343b38 3.5deg 5deg);box-shadow:inset 0 0 0 13px #1a2222,inset 0 0 0 15px #58605b,inset 0 0 25px #000,0 4px 10px #000d;touch-action:none;cursor:grab;position:relative}
+.efx1000 .efx-jog:active{cursor:grabbing}.efx1000 .efx-jog:after{content:'JOG';position:absolute;inset:31%;border-radius:50%;display:grid;place-items:center;color:#c4d5d4;font-weight:bold;font-size:13px;background:radial-gradient(#343c39,#181e1f);border:1px solid #75847e}
+.efx1000 .efx-lower{display:flex;justify-content:space-between;align-items:center;gap:5px;flex-wrap:wrap;margin-top:8px}.efx1000 .efx-lower button{min-height:26px;font-size:9px;padding:4px 6px}
+.efx1000 .efx-foottxt{font-size:9px;color:#acb7b3}.efx1000 .efx-switch{display:flex;gap:4px;align-items:center}.efx1000 .efx-head select{background:#121a1a;padding:4px;min-height:24px;font-size:10px}
+.efx1000 .efx-input{display:flex;gap:6px;align-items:center;font-size:9px}.efx1000 .efx-jog-led{color:#a4e5d4;font:10px ui-monospace,monospace}
+@media(max-width:480px){.efx1000{padding:5px}.efx1000 .efx-bay{gap:4px}.efx1000 .efx-side{padding:4px}.efx1000 .efx-buttons button{font-size:7px;min-height:25px}.efx1000 .efx-knob-label{font-size:7px}.efx1000 .efx-turn{width:34px;height:34px}.efx1000 .efx-jog{width:110px;height:110px}}
