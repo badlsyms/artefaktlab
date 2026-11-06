@@ -1,0 +1,9 @@
+
+.ml29-main{border-top-color:#64d9d2!important}.ml29-cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:7px}.ml29-card{padding:8px;border:1px solid var(--ml-edge,#697b86);background:linear-gradient(125deg,#233137,#111c22);min-width:0;overflow:hidden}
+.ml29-card h3{font:700 11px ui-monospace,monospace;letter-spacing:.06em;color:var(--ml-accent,#dbc38a);margin:0 0 6px}
+.ml29-line{display:flex;gap:4px;flex-wrap:wrap;align-items:center;margin:5px 0}.ml29-line button,.ml29-line select{font:10px ui-monospace,monospace;min-height:28px;padding:5px;border-radius:2px;border:1px solid var(--ml-edge,#647b83);background:#15232b;color:#dce9ef}
+.ml29-line select{min-width:0;flex:1 1 135px}
+.ml29-card textarea{width:100%;height:76px;resize:vertical;background:#091923;color:#9ee6e2;border:1px solid #50616b;padding:5px;font:9px ui-monospace,monospace;overflow-wrap:anywhere}
+.ml29-indicator{font:10px ui-monospace,monospace;color:var(--ml-led,#61dbd0)}
+.ml29-hint{color:#a9c1c4;font:9px ui-monospace,monospace;margin:6px 0}
+@media(max-width:690px){.ml29-cols{grid-template-columns:minmax(0,1fr)}}
