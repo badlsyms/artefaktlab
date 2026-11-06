@@ -43,12 +43,14 @@ public class MainActivity extends Activity {
     private MidiDevice activeMidiDevice;
     private MidiOutputPort activeMidiPort;
     private WebView web;
+    private NativePatchbay nativePatchbay;
     private WebViewAssetLoader assetLoader;
     private ValueCallback<Uri[]> fileCallback;
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         assetLoader = new WebViewAssetLoader.Builder().addPathHandler("/assets/", new WebViewAssetLoader.AssetsPathHandler(this)).build();
+        nativePatchbay = new NativePatchbay(this);
         web = new WebView(this);
         web.setBackgroundColor(0xff080f18);
         if (Build.VERSION.SDK_INT >= 35) {
@@ -113,6 +115,19 @@ public class MainActivity extends Activity {
         web.evaluateJavascript(js, null);
     }
     public final class ExportBridge {
+        @JavascriptInterface public String startPatchbay(int inputId,int outputId){
+            if(nativePatchbay==null)return "NOT READY";
+            return nativePatchbay.start(inputId,outputId);
+        }
+        @JavascriptInterface public void setPatchbayMatrix(float ll,float rl,float lr,float rr){
+            if(nativePatchbay!=null)nativePatchbay.setMatrix(ll,rl,lr,rr);
+        }
+        @JavascriptInterface public String getPatchbayStatus(){
+            return nativePatchbay==null?"{}":nativePatchbay.getStatus();
+        }
+        @JavascriptInterface public void stopPatchbay(){
+            if(nativePatchbay!=null)nativePatchbay.stop();
+        }
         @JavascriptInterface public String getMidiDevices() {
             JSONArray devices = new JSONArray();
             try {
@@ -287,6 +302,7 @@ public class MainActivity extends Activity {
         else super.onBackPressed();
     }
     @Override protected void onDestroy() {
+        if(nativePatchbay!=null)nativePatchbay.stop();
         if(pendingCapture!=null){pendingCapture.deny();pendingCapture=null;}
         try{if(activeMidiPort!=null)activeMidiPort.close();if(activeMidiDevice!=null)activeMidiDevice.close();}catch(Exception ignored){}
         if(fileCallback!=null) fileCallback.onReceiveValue(null);
