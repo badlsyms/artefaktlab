@@ -115,6 +115,9 @@ public class MainActivity extends Activity {
         web.evaluateJavascript(js, null);
     }
     public final class ExportBridge {
+        @JavascriptInterface public void requestPatchbayPermission(){
+            runOnUiThread(() -> {if(checkSelfPermission(Manifest.permission.RECORD_AUDIO)!=PackageManager.PERMISSION_GRANTED)requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO},1203);});
+        }
         @JavascriptInterface public String startPatchbay(int inputId,int outputId){
             if(nativePatchbay==null)return "NOT READY";
             return nativePatchbay.start(inputId,outputId);
