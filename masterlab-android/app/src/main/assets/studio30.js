@@ -24,6 +24,7 @@ function scan(){
  make('capture',devices.filter(d=>d.input),'SELECT AUDIO INPUT');
  make('out-a',devices.filter(d=>d.output),'RECEIVE OUTPUT A');
  make('out-b',devices.filter(d=>d.output),'OFF (ONE OUTPUT)');
+ try{const addrs=JSON.parse(native?.lanLocalAddresses?.()||'[]');$('local-addresses').textContent='RECEIVER IPv4: '+(addrs.map(x=>x.address+' ('+x.interface+')').join(' · ')||'UNAVAILABLE')}catch(e){}
  say('DETECTED '+devices.filter(d=>d.input).length+' INPUTS · '+devices.filter(d=>d.output).length+' OUTPUTS');
 }
 function updateMatrix(){
