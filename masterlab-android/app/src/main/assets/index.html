@@ -55,7 +55,7 @@
  <div class="ml30-module"><h3>TX · SEND REAL STEREO AUDIO</h3>
   <div class="ml30-controls"><label>RECEIVER IPv4</label><input type="text" id="ml30-host" aria-label="Receiver IPv4 address" inputmode="decimal" spellcheck="false" placeholder="192.168.1.2"><label>UDP PORT</label><input id="ml30-port" type="number" min="1024" max="65535" value="49530" aria-label="UDP port"></div>
   <div class="ml30-controls"><select id="ml30-capture" aria-label="USB or headset audio input"><option value="">SELECT AUDIO INPUT</option></select></div>
-  <div class="ml30-controls"><button id="ml30-tx-start">▶ START TX</button><button id="ml30-tx-stop">■ STOP TX</button><button id="ml30-scan">⟳ USB / AUDIO SCAN</button></div>
+  <div class="ml30-controls"><button id="ml30-tx-start">▶ START TX</button><button id="ml30-tx-stop">■ STOP TX</button><button id="ml30-ping">◉ PING RX</button><button id="ml30-scan">⟳ USB / AUDIO SCAN</button></div>
   <div id="ml30-tx-info" class="ml30-state">OFF</div>
   <div class="ml30-hint">48 kHz · stereo PCM16 · 5 ms packets · approximately 1.6 Mbit/s payload. Captures a real Android AUDIO INPUT; does not yet capture the full processed MASTER LAB mix.</div>
  </div>
@@ -76,6 +76,7 @@
  <div class="ml30-meter"><strong>BUFFER UNDERRUNS</strong><output id="ml30-underrun">—</output></div>
  <div class="ml30-meter"><strong>LATE PACKETS</strong><output id="ml30-late">—</output></div>
  <div class="ml30-meter"><strong>RX PACKETS</strong><output id="ml30-throughput">—</output></div>
+ <div class="ml30-meter"><strong>LAN PING RTT</strong><output id="ml30-rtt">—</output></div>
  </div>
  <div id="ml30-routes" class="ml30-state">INPUT / OUTPUTS NOT YET SELECTED</div>
  <div id="ml30-state" class="ml30-state">NATIVE ENGINE NOT ACTIVE</div>
