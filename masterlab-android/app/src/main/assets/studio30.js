@@ -66,6 +66,14 @@ const updateStatus=()=>{
  $('health').classList.toggle('active',!bad&&(s.receiving||s.sending));
 };
 $('scan').onclick=scan;
+$('ping').onclick=()=>{
+ if(!native?.lanPing){say('NATIVE LAN PING UNAVAILABLE');return}
+ const port=validatedPort();if(!port){say('INVALID UDP PORT');return}
+ try{let v=JSON.parse(native.lanPing($('host').value,port));
+  $('rtt').textContent=v.error?v.error:(v.avgMs<0?'TIMEOUT':v.avgMs+' ms / '+v.received+'/'+v.sent);
+  say(v.error?'PING ERROR: '+v.error:'PING RECEIVED '+v.received+'/'+v.sent+' · RTT '+v.avgMs+' ms')
+ }catch(e){say('PING '+e.message)}
+};
 $('tx-start').onclick=()=>{
  if(!native?.lanStartTx){say('NATIVE AUDIO REQUIRED · INSTALL ANDROID APK');return}
  save();const port=validatedPort();if(!port){say('INVALID PORT');return}
