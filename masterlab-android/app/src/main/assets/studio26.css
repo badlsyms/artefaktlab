@@ -56,3 +56,5 @@ body[data-ml-skin] .ml-quicknav,body[data-ml-skin] header{background:var(--ml-fa
 @media(max-width:900px){.grid{grid-template-columns:1fr 1fr}.grid .mixer{grid-column:1/-1;grid-row:auto}}
 @media(max-width:680px){.grid{grid-template-columns:minmax(0,1fr)}.grid .mixer{grid-column:auto}.ml26-grid{grid-template-columns:minmax(0,1fr)}.ml26-unit{padding:5px}.ml26-matrix th:first-child{width:61px}.ml26-matrix th,.ml26-matrix td{font-size:8px;padding:3px 1px}.ml26-matrix input[type=number]{width:36px;font-size:9px}.hotcues{grid-template-columns:repeat(8,minmax(0,1fr))}}
 @media(max-width:360px){.ml26-route{grid-template-columns:64px repeat(4,minmax(0,1fr));font-size:8px}.ml26-matrix input[type=number]{width:31px}}
+
+.ml26-header-mark{display:inline-block;font:italic 900 18px Arial,sans-serif;letter-spacing:-.13em;margin-right:8px;color:#8deee8;text-shadow:0 0 7px #1c7979}.ml26-unit>header{white-space:normal;max-width:100%}.ml26-unit .ml26-hrow select{max-width:100%}.ml26-grid .ml26-unit{scroll-margin-top:105px}
