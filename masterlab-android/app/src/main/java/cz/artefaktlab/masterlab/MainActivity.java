@@ -2,6 +2,9 @@ package cz.artefaktlab.masterlab;
 
 import android.app.Activity;
 import android.os.Bundle;
+import android.os.Build;
+import android.graphics.Insets;
+import android.view.WindowInsets;
 import android.content.Intent;
 import android.content.ClipData;
 import android.content.ContentValues;
@@ -48,6 +51,13 @@ public class MainActivity extends Activity {
         assetLoader = new WebViewAssetLoader.Builder().addPathHandler("/assets/", new WebViewAssetLoader.AssetsPathHandler(this)).build();
         web = new WebView(this);
         web.setBackgroundColor(0xff080f18);
+        if (Build.VERSION.SDK_INT >= 35) {
+            web.setOnApplyWindowInsetsListener((view, insets) -> {
+                Insets bars = insets.getInsets(WindowInsets.Type.systemBars() | WindowInsets.Type.displayCutout());
+                view.setPadding(bars.left, bars.top, bars.right, bars.bottom);
+                return insets;
+            });
+        }
         WebSettings settings = web.getSettings();
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
