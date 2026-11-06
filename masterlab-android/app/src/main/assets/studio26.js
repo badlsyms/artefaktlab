@@ -7,7 +7,7 @@ const limit=(v,min,max)=>Math.min(max,Math.max(min,v));
 const inputNames=['DECK A L','DECK A R','DECK B L','DECK B R','EXT IN L','EXT IN R'];
 const outNames=['MAIN L','MAIN R','AUX L','AUX R'];
 const defaultRoutes=()=>inputNames.map((s,i)=>outNames.map((d,j)=>i<4&&(i%2===j)?1:0));
-const state={version:2,skin:'console',routes:defaultRoutes(),volumes:Array(6).fill(1),widgets:['clock','audio','bpm','midi'],
+const state={savedRack:null,version:2,skin:'console',routes:defaultRoutes(),volumes:Array(6).fill(1),widgets:['clock','audio','bpm','midi'],
  tracks:[{name:'MAIN MIX',bus:'main'},{name:'AUX STEM',bus:'aux'},{name:'DECK A',bus:'a'},{name:'DECK B',bus:'b'}],
  midiEvents:[],midiFilter:-1,monitor:false,selectedInput:'',recordMimes:[]};
 let graph=null,extStream=null,externalSource=null,activeRecordings=new Map(),finished=new Map(),lastMidiAt=0;
@@ -15,7 +15,7 @@ const banner=msg=>{let node=by('state');if(node)node.textContent=msg;};
 const now=()=>new Date().toLocaleTimeString('cs-CZ');
 function readPrefs(){
  try{const raw=localStorage.getItem('masterlab26-workspace');if(!raw)return;let data=JSON.parse(raw);
-  if(data.version!==2)return;
+  if(data.version!==2)return;if(data.rack&&typeof data.rack==='object')state.savedRack=data.rack;
   if(['console','british','vintage','blackout','modular','industrial'].includes(data.skin))state.skin=data.skin;
   if(Array.isArray(data.routes)&&data.routes.length===6&&data.routes.every(r=>Array.isArray(r)&&r.length===4))state.routes=data.routes.map(r=>r.map(v=>limit(Number(v)||0,0,2)));
   if(Array.isArray(data.volumes)&&data.volumes.length===6)state.volumes=data.volumes.map(v=>limit(Number(v)||0,0,2));
@@ -24,7 +24,19 @@ function readPrefs(){
  }catch(e){banner('WORKSPACE: invalid saved state')}
 }
 function serialize(){
- return {version:2,skin:state.skin,routes:state.routes,volumes:state.volumes,widgets:state.widgets,tracks:state.tracks};
+ return {version:2,skin:state.skin,routes:state.routes,volumes:state.volumes,widgets:state.widgets,tracks:state.tracks,rack:(typeof rackDefs!=='undefined'&&typeof rack!=='undefined')?Object.fromEntries(rackDefs.map(d=>[d.id,{enabled:rack[d.id]?.enabled,vals:rack[d.id]?.vals}])):null};
+}
+function restoreRack(){
+ if(!state.savedRack||typeof rackDefs==='undefined'||typeof rack==='undefined')return;
+ for(const def of rackDefs){const saved=state.savedRack[def.id],target=rack[def.id];if(!saved||!target)continue;
+  if(typeof saved.enabled==='boolean'&&saved.enabled!==target.enabled){
+   const toggle=document.querySelector('#unit-'+def.id+' .heading button');if(toggle)toggle.click();
+  }
+  for(let i=0;i<def.controls.length;i++){const key=def.controls[i][0],value=saved.vals?.[key];if(typeof value!=='number'||!Number.isFinite(value))continue;
+   const input=document.querySelectorAll('#unit-'+def.id+' input[type=range]')[i];if(input){input.value=value;input.dispatchEvent(new Event('input',{bubbles:true}))}
+  }
+ }
+ state.savedRack=null;
 }
 function savePrefs(){try{localStorage.setItem('masterlab26-workspace',JSON.stringify(serialize()));by('save-led').textContent='● SAVED'}catch(e){banner('SAVE: '+e.message)}}
 function download(name,content,mime){let blob=new Blob([content],{type:mime}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),30000)}
@@ -156,7 +168,7 @@ async function downloadRecording(i){
  download('MASTER-LAB_'+name+'_'+item.time+'.'+ext,item.blob,item.mime)
 }
 function saveSnapshot(){download('MASTER-LAB-workspace-v2.json',JSON.stringify(serialize(),null,2),'application/json')}
-function restoreSnapshot(file){if(!file)return;file.text().then(t=>{let p=JSON.parse(t);if(p.version!==2)throw Error('Unsupported workspace version');localStorage.setItem('masterlab26-workspace',t);readPrefs();applySkin();drawMatrix();drawLevels();buildTracks();drawWidgets();banner('WORKSPACE IMPORTED')}).catch(e=>banner('IMPORT: '+e.message))}
+function restoreSnapshot(file){if(!file)return;file.text().then(t=>{let p=JSON.parse(t);if(p.version!==2)throw Error('Unsupported workspace version');localStorage.setItem('masterlab26-workspace',t);readPrefs();applySkin();restoreRack();drawMatrix();drawLevels();buildTracks();drawWidgets();banner('WORKSPACE IMPORTED')}).catch(e=>banner('IMPORT: '+e.message))}
 function drawWidgets(){
  const area=by('widgets');area.replaceChildren();const list=['clock','audio','bpm','midi','devices','rec','cpu'];
  for(const id of list){
@@ -211,7 +223,7 @@ function updateWidgets(){
    rec:activeRecordings.size+' REC',cpu:'DSP / ACTIVE'};out.textContent=t[id]||'—'
  }
 }
-readPrefs();applySkin();drawMatrix();drawLevels();buildTracks();drawWidgets();attachMidi();drawMidi();
+readPrefs();applySkin();restoreRack();drawMatrix();drawLevels();buildTracks();drawWidgets();attachMidi();drawMidi();
 by('skin').onchange=e=>{state.skin=e.target.value;applySkin();savePrefs()};
 by('save').onclick=()=>{savePrefs();saveSnapshot()};
 by('load').onclick=()=>by('file').click();
