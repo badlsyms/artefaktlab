@@ -1,4 +1,5 @@
 import express from 'express';
+import { createPinGuard } from './access-control.js';
 import helmet from 'helmet';
 import { GoogleGenAI } from '@google/genai';
 import { fileURLToPath } from 'node:url';
@@ -122,14 +123,7 @@ setInterval(() => {
   }
 }, 5 * 60_000).unref();
 
-function pinGuard(req, res, next) {
-  if (!ACCESS_PIN) return next();
-  const provided = String(req.get('x-nucleus-pin') || '');
-  if (provided !== ACCESS_PIN) {
-    return res.status(401).json({ error: 'Nucleus je uzamčen. Zadej přístupový PIN.', code: 'PIN_REQUIRED' });
-  }
-  next();
-}
+const pinGuard = createPinGuard(ACCESS_PIN);
 
 function normalizeHistory(history) {
   if (!Array.isArray(history)) return [];
@@ -300,7 +294,8 @@ app.get('/api/status', (_req, res) => {
     cloudDataConfigured,
     cloudAiConfigured: Boolean(PROJECT),
     apiKeyFallbackConfigured: Boolean(API_KEY),
-    pinProtected: Boolean(ACCESS_PIN)
+    pinProtected: Boolean(ACCESS_PIN.trim()),
+    accessConfigured: Boolean(ACCESS_PIN.trim())
   });
 });
 
@@ -465,3 +460,4 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`Můj Nucleus ${VERSION} listening on ${PORT}`);
   console.log(`Chat model: ${MODEL}; Fact model: ${FACT_MODEL}; Vertex: ${Boolean(PROJECT)}; Cloud data: ${cloudDataConfigured}; PIN: ${Boolean(ACCESS_PIN)}`);
 });
+
