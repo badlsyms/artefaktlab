@@ -1,0 +1,23 @@
+@font-face {
+  font-family: "Barlow Condensed";
+  src: url("./BarlowCondensed-SemiBold.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Coelacanth Caption";
+  src: url("./CoelacanthCaption.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
+header, h2, .row button {
+  font-family: "Barlow Condensed", system-ui, sans-serif;
+  font-weight: 600;
+}
+
+.trace-help {
+  font: 400 17px / 1.45 "Coelacanth Caption", Georgia, serif;
+}
